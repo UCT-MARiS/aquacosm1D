@@ -3,9 +3,10 @@
 Further development by Giles Fearon and Marcello Vichi (UCT)
 
 This library implements the aquacosm approch described in
-Paparella, F., Vichi, M., 2020. Stirring, Mixing, Growing: 
+
+_Paparella, F., Vichi, M., 2020. Stirring, Mixing, Growing: 
 Microscale Processes Change Larger Scale Phytoplankton Dynamics. 
-Front. Mar. Sci. 7. [https://doi.org/10.3389/fmars.2020.00654]
+Front. Mar. Sci. 7. [https://doi.org/10.3389/fmars.2020.00654]_
 
 It is still a work in progress and not all components are functional.
 The actual code is found in `aquacosm1D_lib`. It is mostly a pure
@@ -15,17 +16,17 @@ the C code into a shared library, first. On a linux box, with the gcc
 compiler, this is as easy as issuing the following command in the
 `aquacosm1D_lib` folder:
 
-gcc -std=c99 -pedantic -Wall -O3 -fPIC aqc1D_diffusion.c -shared -lm -o aqc1D_diffusion.so
+`gcc -std=c99 -pedantic -Wall -O3 -fPIC aqc1D_diffusion.c -shared -lm -o aqc1D_diffusion.so`
 
 The C code strictly adheres to the c99 standard, and it is linked to
-python via the ctypes interface, which is supported on all platforms.
+python via the `ctypes` interface, which is supported on all platforms.
 
 The `/configs/` directory contains various configurations for running the example 
 published in Paparella and Vichi (2020).
 Once the compilation is done, go to the `/configs/PAPA_example` folder and run
 the script `PAPA_simulation_p1e-7.py`. That performs a 4-years
-simulation using the eddy diffusivity data in `PAPA_6h_1Y_L75_DN.nc`
-(it repeats 4 times the same year and will last several hours on a
+simulation using the eddy diffusivity data in `PAPA_6h_1Y_L75_DN.nc`, generated with the 
+NEMO ocean model (it repeats 4 times the same year and will take a few hours on a
 recent computer).
 
 Most of the action occurs in the "wc" object, which is an instance of
@@ -55,6 +56,6 @@ facilitating collaboration
 
 ## Acknowledgements
 This work was partly funded by an anonymous donor as part of the 
-Whales and Climate Research Program (https://www.whalesandclimate.org/), 
+Whales and Climate Research Program [https://www.whalesandclimate.org/], 
 as well as from the European Union’s Horizon 2020 research and innovation 
-programme under grant agreement No 862923.
+programme under the project AtlantECO (grant agreement No 862923).
