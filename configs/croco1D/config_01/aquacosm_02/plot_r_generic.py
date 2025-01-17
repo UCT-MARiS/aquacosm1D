@@ -6,9 +6,10 @@ from datetime import datetime, timedelta
 import xarray as xr
 from pathlib import Path
 from scipy.interpolate import interp1d
+import params
 from plot_eul_aqc_lib import *
 ion()
-
+react_params = params.reactions()
 def get_r(React):
     
     # set up aquacosm array in correct format for calling reactions library
@@ -90,13 +91,12 @@ if __name__ == "__main__":
     wc = water_column(kappa, max_depth, short_wave_radiation=250)
     
     React = set_up_reaction(wc, dt, BioShading_onlyC,
-                    LightDecay=5.,
-                    MaxPhotoRate = 1.0, 
-                    BasalMetabolism = 0.16,
-                    Chl_C = 0.017,
-                    CrowdingMortality = 0.5,
-                    CrowdingHalfSaturation = 12.5,
-                        Chl_light_abs = 0.)
+                            LightDecay=react_params.LightDecay,
+                            MaxPhotoRate = react_params.MaxPhotoRate, 
+                            BasalMetabolism = react_params.BasalMetabolism,
+                            Chl_C = react_params.Chl_C,
+                            CrowdingMortality = react_params.CrowdingMortality,
+                            Chl_light_abs = react_params.Chl_light_abs)
     
     Chl, depth, r=get_r(React)
     

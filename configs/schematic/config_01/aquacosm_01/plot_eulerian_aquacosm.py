@@ -5,13 +5,16 @@ from netCDF4 import Dataset
 from datetime import datetime, timedelta
 from pathlib import Path
 from scipy.interpolate import interp1d
+import params
 ion()
+
+react_params = params.reactions
 
 def get_aqc_output(aqcfile):
     # get the aquacosm output
     data_aqc=Dataset(aqcfile)
     p=data_aqc.couping_parameter_p
-    Chl_C=np.float(data_aqc.Chl_C) # ratio of chlorophyll to carbon [mgChl/mgC]
+    Chl_C=float(data_aqc.Chl_C) # ratio of chlorophyll to carbon [mgChl/mgC]
     chl_aqc=data_aqc.variables['chl'][:,:]
     z_aqc=data_aqc.variables['depth'][:,:]
     z_rank=data_aqc.variables['depth_rank'][:]
@@ -47,7 +50,7 @@ def plot_C(ax,n,time,z,carbon,label,t,max_chl):
                         cmap=cm.viridis, linewidth=0, s=40)
     img.set_clim(0, max_chl)
     ax[n].set_ylim(50, 0)
-    ax[n].set_xlim(0,21)
+    ax[n].set_xlim(0,22)
     ax[n].set_xticks(range(0,22))
     ax[n].set_ylabel('Depth (m)', fontsize=15,)
     if n==2:
@@ -75,20 +78,20 @@ def do_the_plot(mld,kappa,reaction,max_photo):
     t=5.75 #days    
             
     # plot the eulerian data
-    eulfile='eulerian_'+reaction+'_r'+max_photo+'_mld'+str(mld)+"_kappa"+str(kappa)+".nc"
+    eulfile='eulerian_'+react_params.Name+'_r'+str(react_params.BasePhotoRate)+'_mld'+str(mld)+'_kappa'+str(kappa)+'_dt5.nc'
     time_eul,z_eul,chl_eul,chl_eul_avg=get_eul_output(eulfile)
     tindx_eul = (np.abs(time_eul[:,0] - t)).argmin()
     #
     # max values to plot
     # base = 5 #nearest multiple of 'base'
     # max_chl = base * round(np.max(chl_eul)/base)
-    max_chl = 12#15#35#500
+    max_chl = chl_eul.max()#15#35#500
     plot_C(ax,0,time_eul,z_eul,chl_eul,'Eulerian',t,max_chl)
     
     # plot the aquacosm data
-    ps=[1e-3,1e-7]
+    ps=[1e-4,1e-7]#[1e-3,1e-7]
     for ii,p in enumerate(ps):
-        aqcfile='aquacosm_p'+"{0:1.0e}".format(p)+'_'+reaction+'_r'+max_photo+'_mld'+str(mld)+"_kappa"+str(kappa)+".nc"   
+        aqcfile='aquacosm_p'+"{0:1.0e}".format(p)+'_'+ str(react_params.Name)+'_r'+str(react_params.BasePhotoRate) +'_mld'+str(mld)+'_kappa'+str(kappa)+'_dt'+str(dt)+'.nc'
         time_aqc,z_aqc,chl_aqc,chl_aqc_avg = get_aqc_output(aqcfile)
         plot_C(ax,ii+1,time_aqc,z_aqc,chl_aqc,'Aquacosms, p = '+"{0:1.0e}".format(p),t,max_chl)  
     
@@ -121,9 +124,9 @@ def do_the_plot(mld,kappa,reaction,max_photo):
     ts=gcf().add_axes((0., 0.55-0.55*3, 0.8, 0.5))
     ts.plot(time_eul[:,0],chl_eul_avg, 'k', linewidth=4, label='Eulerian')
     # ps=[1e-3,1e-5,1e-7,1e-9]
-    ps=[1e-3,1e-5,1e-7]
+    ps=[1e-4,1e-7]#[1e-3,1e-5,1e-7]
     for ii,p in enumerate(ps):
-        aqcfile='aquacosm_p'+"{0:1.0e}".format(p)+'_'+reaction+'_r'+max_photo+'_mld'+str(mld)+"_kappa"+str(kappa)+".nc"   
+        aqcfile='aquacosm_p'+"{0:1.0e}".format(p)+'_'+ str(react_params.Name)+'_r'+str(react_params.BasePhotoRate) +'_mld'+str(mld)+'_kappa'+str(kappa)+'_dt'+str(dt)+'.nc'
         time_aqc,z_aqc,chl_aqc,chl_aqc_avg = get_aqc_output(aqcfile)
         ts.plot(time_aqc[:,0],chl_aqc_avg, linewidth=2, label='Aquacosms, p = '+"{0:1.0e}".format(p))
     ts.set_ylabel('average Chl (mg m$^{-3}$)', fontsize=15)
@@ -132,9 +135,9 @@ def do_the_plot(mld,kappa,reaction,max_photo):
     # base = 2 #nearest multiple of 'base'
     # max_chl = base * round(np.max(chl_eul_avg)/base)
     # max_chl = 12#15#35#500
-    ts.set_ylim(0,max_chl)
-    ts.set_xlim(0,21)
-    ts.set_xticks(range(0,22))
+    ts.set_ylim(0,44)
+    ts.set_xlim(0,22)
+    ts.set_xticks(range(0,23))
     ts.grid(linestyle=':', linewidth=0.5)
     ts.legend(fontsize=12, loc="upper left")
     
@@ -151,10 +154,11 @@ def do_the_plot(mld,kappa,reaction,max_photo):
     
 if __name__ == "__main__":
     
-    mlds = [20,50]
-    kappas = [0.001] #[0.0001,0.001,0.01]     
-    reactions = ['Sverdrup_incl_K'] #['Sverdrup','Sverdrup_incl_K']
+    mlds = [20]
+    kappas = [0.001]     
+    reactions = ['Sverdrup'] #['Sverdrup','Sverdrup_incl_K']
     max_photo = '1.0'
+    dt = 5
     
     for mld in mlds:
         for kappa in kappas:

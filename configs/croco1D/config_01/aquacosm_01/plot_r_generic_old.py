@@ -3,11 +3,13 @@ sys.path.insert(0, '../../../../aquacosm1D_lib')
 from aquacosm1D import *
 from netCDF4 import Dataset
 from datetime import datetime, timedelta
+import params
 import xarray as xr
 from pathlib import Path
 from scipy.interpolate import interp1d
 from plot_eul_aqc_lib import *
 ion()
+react_params = params.reactions01()
 
 def get_r(React):
     
@@ -79,10 +81,10 @@ if __name__ == "__main__":
     max_depth=20
     wc = water_column(kappa, max_depth)
     React = set_up_reaction(wc, dt, Sverdrup_incl_K, 
-                            LightDecay = 5.,
-                            BasePhotoRate = 1.,
-                            RespirationRate = 0.1,
-                            CarryingCapacity = 20)
+                                LightDecay = react_params.LightDecay,
+                                BasePhotoRate = react_params.BasePhotoRate,
+                                RespirationRate = react_params.RespirationRate,
+                                CarryingCapacity = react_params.CarryingCapacity)
     # React = set_up_reaction(wc, dt, Sverdrup, 
     #                         LightDecay = 5.,
     #                         BasePhotoRate = 1.,

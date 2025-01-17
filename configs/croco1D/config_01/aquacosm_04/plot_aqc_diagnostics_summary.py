@@ -5,13 +5,15 @@ from netCDF4 import Dataset
 from datetime import datetime, timedelta
 import xarray as xr
 from pathlib import Path
+import params
 from scipy.interpolate import interp1d
 from plot_eul_aqc_lib import *
 ion()
+react_params = params.reactions()
         
-def do_the_plot(mld,amplitude,mean_tau,Qswmax,React,p):
+def do_the_plot(mld,amplitude,mean_tau,Qswmax,p):
         
-    fname='aquacosm_p'+"{0:1.0e}".format(p)+'_r'+str(React.MaxPhotoRate*(60.*60.*24.))+'_c'+str(React.Chl_light_abs)+'_a'+str(React.CrowdingMortality*(60.*60.*24.))+'_l'+str(React.LightDecay)+'_mean'+str(mean_tau)+'_amp'+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)
+    fname='aquacosm_p'+"{0:1.0e}".format(p)+'_r'+str(react_params.MaxPhotoRate)+'_b'+str(react_params.BasalMetabolism)+'_c'+str(react_params.Chl_light_abs)+'_a'+str(react_params.CrowdingMortality)+'_l'+str(react_params.LightDecay)+'_mean'+str(mean_tau)+"_amp"+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)+'.nc'
     diagfile=fname+'_diags.nc'
     print('\n working on ' + diagfile +'\n')
         
@@ -108,18 +110,7 @@ if __name__ == "__main__":
                     crocofilename="mean"+str(mean_tau)+"_mld"+str(mld)+"_amp"+str(amplitude)+"_flx"+str(Qswmax)+"_lat30_T016_hmax50.nc"
                     crocofile=crocodir+crocofilename
                     
-                    dt = 5             
-                    wc = water_column_netcdf(DatasetName=crocofile, max_depth=50)
-                    React = set_up_reaction(wc, dt, BioShading_onlyC,
-                                        LightDecay=5.,
-                                        MaxPhotoRate = 1.0, 
-                                        BasalMetabolism = 0.16,
-                                        Chl_C = 0.017,
-                                        CrowdingMortality = 0.65,
-                                        CrowdingHalfSaturation = 125,
-                                        Chl_light_abs = 0.)
-                    
                     for p in ps:
-                        do_the_plot(mld,amplitude,mean_tau,Qswmax,React,p)
+                        do_the_plot(mld,amplitude,mean_tau,Qswmax,p)
     
     

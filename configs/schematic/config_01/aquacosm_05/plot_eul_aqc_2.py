@@ -127,10 +127,10 @@ if __name__ == "__main__":
             wc = water_column_netcdf(DatasetName=crocofile, max_depth=mld)
             React = set_up_reaction(wc, dt, BioShading_onlyC,
                                 LightDecay=5.,
-                                MaxPhotoRate = 1., 
+                                MaxPhotoRate = 2., 
                                 BasalMetabolism = 0.1,
                                 Chl_C = 0.017,
-                                CrowdingMortality = 0.8,
+                                CrowdingMortality = 1.8,
                                 Chl_light_abs = 0.)
             
             do_the_plot(mld,kappa,React)

@@ -5,6 +5,7 @@ from netCDF4 import Dataset
 from datetime import datetime, timedelta
 from pathlib import Path
 from scipy.interpolate import interp1d
+from plot_croco_lib import *
 import math
 ion()
 
@@ -36,12 +37,12 @@ def get_kappa_surface(time,z,zw,temp,kappa,temp_thermocline):
     kappa_s[kappa_s == 0] = np.NaN 
     z_therm[z_therm == 0] = np.NaN   
 
-    kappa_s = kappa_s/z_therm # now the mean over the surface layer    
+    kappa_s = kappa_s/z_therm # now the mean over the surface layer  
+    print(kappa_s)
          
     return kappa_s, z_therm   
     
 if __name__ == "__main__":
-    
     fig, ax = plt.subplots(figsize=(10,15))
     
     ax = [subplot(3,1,i+1) for i in range(3)]
@@ -49,7 +50,7 @@ if __name__ == "__main__":
     for n in range(3):
         ax[n].set_position(  (0.08, 0.86-0.14*n, 0.8, 0.13))
     
-    amplitudes = [0.01, 0.02,0.03, 0.04]
+    amplitudes = [0.01]#[0.01, 0.02,0.03, 0.04]
     for amplitude in amplitudes:
         crocofile = 'mean0_mld10_amp'+str(amplitude)+'_flx800_lat30_T016_hmax50.nc'
         
@@ -63,13 +64,13 @@ if __name__ == "__main__":
         time_croco=data_croco.variables['time_counter'][:]/3600/24 # time in days
         kappa_croco_surf,z_therm_croco=get_kappa_surface(time_croco,z,zw,temp_croco,kappa_croco,11)
         # compute epsilon
-        r=0.5 # growth rate days^-1
+        r=1 # growth rate days^-1
         eps=r/86400*np.square(z_therm_croco)/kappa_croco_surf
         data_croco.close()
         
         h=50/200
         dt=5 #s
-        ps = [1e-3, 1e-5, 1e-7]
+        ps = [1e-4, 1e-7]
         for i, p in enumerate(ps):
             q = p/(4*np.pi*kappa_croco_surf*dt)*exp(-1*math.pow(h,2)/(4*kappa_croco_surf*dt))
             D = math.pow(h,2)/dt*q

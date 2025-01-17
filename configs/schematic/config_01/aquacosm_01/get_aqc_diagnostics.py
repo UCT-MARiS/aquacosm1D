@@ -8,13 +8,14 @@ import xarray as xr
 from pathlib import Path
 from scipy.interpolate import interp1d
 from plot_eul_aqc_lib import *
+from get_output_lib import *
 import params
 ion()
-react_params = params.reactions01()
+react_params = params.reactions()
 np.seterr(divide='ignore', invalid='ignore')
 
 def do_the_diags(mld,amplitude,mean_tau,Qswmax,React,p):
-    fname='aquacosm_p'+"{0:1.0e}".format(p)+'_'+react_params.Name+'_l' + str(react_params.LightDecay)+ '_K' + str(react_params.CarryingCapacity)+'_r'+ str(react_params.BasePhotoRate)+ '_mean'+str(mean_tau)+"_amp"+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)
+    fname= 'aquacosm_p'+"{0:1.0e}".format(p)+'_'+ str(react_params.Name)+'_r'+str(react_params.BasePhotoRate) +'_mld'+str(mld)+'_kappa'+str(kappa)+'_dt'+str(dt)
     aqcfile=fname+'.nc'
     print('\n working on ' + aqcfile +'\n')
     
@@ -88,25 +89,26 @@ def do_the_diags(mld,amplitude,mean_tau,Qswmax,React,p):
 if __name__ == "__main__":
     
     amplitudes = [0.04] 
-    mlds = [10]#[10, 25]   
+    mlds = [20]#[10, 25]   
     mean_taus = [0.05]#[0.05]
     Qswmaxs = [800] #[0, 250, 800]  
     ps=[1e-7]
+    kappa = 0.001
     for amplitude in amplitudes:
         for mld in mlds:
             for Qswmax in Qswmaxs:
                 for mean_tau in mean_taus:
-                    crocodir='../physics/'
-                    crocofilename="mean"+str(mean_tau)+"_mld"+str(mld)+"_amp"+str(amplitude)+"_flx"+str(Qswmax)+"_lat30_T016_hmax50.nc"
-                    crocofile=crocodir+crocofilename
+                    physicsdir='../physics/'
+                    physicsfilename="mld"+str(mld)+"_kappa"+str(kappa)+".nc"
+                    physicsfile=physicsdir+physicsfilename
+                    time_physics, z, zw, kappa_physics, s_flux = get_physics_input(physicsfile)
                     
                     dt = 5             
-                    wc = water_column_netcdf(DatasetName=crocofile, max_depth=50)
-                    React = set_up_reaction(wc, dt, Sverdrup_incl_K, 
+                    wc = water_column_netcdf(DatasetName=physicsfile, max_depth=50)
+                    React = set_up_reaction(wc, dt, Sverdrup, 
                                             LightDecay = react_params.LightDecay,
                                             BasePhotoRate = react_params.BasePhotoRate,
-                                            RespirationRate = react_params.RespirationRate,
-                                            CarryingCapacity = react_params.CarryingCapacity)
+                                            RespirationRate = react_params.RespirationRate,)
                     React.Chl_C = 1. # Not applicable. Just adding this here for compatibility with BioShading_onlyC
                     for p in ps:
                         do_the_diags(mld,amplitude,mean_tau,Qswmax,React,p)

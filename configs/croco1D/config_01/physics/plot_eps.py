@@ -37,7 +37,6 @@ def get_kappa_surface(time,z,zw,temp,kappa,temp_thermocline):
     z_therm[z_therm == 0] = np.NaN   
 
     kappa_s = kappa_s/z_therm # now the mean over the surface layer    
-         
     return kappa_s, z_therm     
     
 if __name__ == "__main__":
@@ -47,36 +46,39 @@ if __name__ == "__main__":
     ax = [subplot(3,1,i+1) for i in range(3)]
     
     for n in range(3):
+        print(n)
         ax[n].set_position(  (0.08, 0.86-0.14*n, 0.8, 0.13))
     
-    amplitudes = [0.01, 0.02,0.03, 0.04]
+    amplitudes = [0.03]#[0.01,0.02,0.03]#[0.01, 0.02,0.03, 0.04]
+    mean_taus = [0]
     for amplitude in amplitudes:
-        crocofile = 'mean0_mld10_amp'+str(amplitude)+'_flx800_lat30_T016_hmax50.nc'
+        for mean_tau in mean_taus: 
+            crocofile = 'mean'+str(mean_tau)+'_mld10_amp'+str(amplitude)+'_flx800_lat30_T016_hmax50.nc' 
+            # get the croco output
+            data_croco=Dataset(crocofile)
+            # tpas_croco=data_croco.variables['tpas'][:,:,0,0]
+            temp_croco=data_croco.variables['temp'][:,:,0,0]
+            kappa_croco=data_croco.variables['difvho'][:,:,0,0]
+            z=data_croco.variables['deptht'][:]
+            zw=data_croco.variables['depthw'][:]
+            time_croco=data_croco.variables['time_counter'][:]/3600/24 # time in days
+            kappa_croco_surf,z_therm_croco=get_kappa_surface(time_croco,z,zw,temp_croco,kappa_croco,11)
+            # compute epsilon
+            r=0.1 # growth rate days^-1
+            eps=r/86400*np.square(z_therm_croco)/kappa_croco_surf
+            print(eps)
+            data_croco.close()
         
-        # get the croco output
-        data_croco=Dataset(crocofile)
-        # tpas_croco=data_croco.variables['tpas'][:,:,0,0]
-        temp_croco=data_croco.variables['temp'][:,:,0,0]
-        kappa_croco=data_croco.variables['difvho'][:,:,0,0]
-        z=data_croco.variables['deptht'][:]
-        zw=data_croco.variables['depthw'][:]
-        time_croco=data_croco.variables['time_counter'][:]/3600/24 # time in days
-        kappa_croco_surf,z_therm_croco=get_kappa_surface(time_croco,z,zw,temp_croco,kappa_croco,11)
-        # compute epsilon
-        r=0.5 # growth rate days^-1
-        eps=r/86400*np.square(z_therm_croco)/kappa_croco_surf
-        data_croco.close()
-        
-        ax[0].plot(time_croco,kappa_croco_surf,label=str(amplitude))
-        ax[1].plot(time_croco,z_therm_croco,label=str(amplitude))
-        ax[2].plot(time_croco,eps,label=str(amplitude))
+            ax[0].plot(time_croco,kappa_croco_surf,label=str(amplitude))
+            ax[1].plot(time_croco,z_therm_croco,label=str(amplitude))
+            ax[2].plot(time_croco,eps,label=str(amplitude))
     
     for n in range(3):
-        ax[n].set_xlim(1,8)
+        ax[n].set_xlim(1,21)
         
     ax[0].set_ylabel("$\kappa_s$ (m$^2$ s$^{-1}$)", fontsize=15)
     ax[0].set_xticklabels([])
-    ax[0].set_ylim(0, 0.002)
+    #ax[0].set_ylim(0, 0.002)
     
     ax[1].set_ylabel("$\ell$ (m)", fontsize=15)
     ax[1].set_xticklabels([])
@@ -84,7 +86,7 @@ if __name__ == "__main__":
     
     ax[2].set_ylabel("$\epsilon$ = $r\ell^2/\kappa_s$\n(r = "+str(r)+" days$^{-1}$)", fontsize=15)
     ax[2].set_xlabel("Time (days)", fontsize=15)
-    ax[2].set_ylim(0, 30)
+    ax[2].set_ylim(0, 25)
         
     plt.savefig('plot_eps.jpg',dpi=500,bbox_inches = 'tight')
     

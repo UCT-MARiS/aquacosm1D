@@ -25,8 +25,8 @@ def plot_generic(ax,n,time,z,data,label,min_val,max_val,cmap):
                         cmap=cmap, linewidth=0, s=40)
     img.set_clim(min_val, max_val)
     ax[n].set_ylim(50, 0)
-    ax[n].set_xlim(0,21)
-    ax[n].set_xticks(range(0,22))
+    ax[n].set_xlim(0,22)
+    ax[n].set_xticks(range(0,23))
     ax[n].set_ylabel('Depth (m)', fontsize=15,)
     # add a colorbar
     cbarax = gcf().add_axes((hzt_loc+0.82, vrt_loc, 0.015, 0.5)) # [left, bottom, width, height] 
@@ -44,18 +44,6 @@ def do_the_plot(react_params,physics_params,p):
     crocofilename="mean"+str(physics_params.mean_tau)+"_mld"+str(physics_params.mld)+"_amp"+str(physics_params.amplitude)+"_flx"+str(physics_params.Qswmax)+"_lat30_T016_hmax50.nc"
     crocofile=crocodir+crocofilename
     
-    dt = 5             
-    wc = water_column_netcdf(DatasetName=crocofile, max_depth=50)
-    React = set_up_reaction(wc, dt, BioShading_onlyC,
-                        LightDecay=react_params.LightDecay,
-                        AlphaEpsilon=react_params.AlphaEpsilon,
-                        MaxPhotoRate = react_params.MaxPhotoRate, 
-                        BasalMetabolism = react_params.BasalMetabolism,
-                        Chl_C = react_params.Chl_C,
-                        CrowdingMortality = react_params.CrowdingMortality,
-                        CrowdingHalfSaturation = react_params.CrowdingHalfSaturation,
-                        Chl_light_abs = react_params.Chl_light_abs)
-    
         
     fname='aquacosm_p'+"{0:1.0e}".format(p)+'_'+react_params.Name+'_'+physics_params.Name
     diagfile=fname+'_diags.nc'
@@ -64,7 +52,7 @@ def do_the_plot(react_params,physics_params,p):
     # get the croco input data
     time_croco, z, zw, temp_croco, tpas_croco, kappa_croco, u_croco, v_croco, s_flux, tau_x, tau_y, dzetadx = get_croco_output(crocofile)
     #
-    z_therm_croco=get_z_therm_croco(time_croco,z,temp_croco,11)
+    z_therm_croco=get_z_therm_croco(time_croco,z,temp_croco)
     Nt_croco,Nz_croco=shape(temp_croco)
     # repeat time along the z dimension for plotting
     time_croco = np.repeat(time_croco[:, np.newaxis], Nz_croco, axis=1)

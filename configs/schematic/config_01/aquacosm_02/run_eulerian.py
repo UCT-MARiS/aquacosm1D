@@ -23,8 +23,8 @@ Nconsole  = int(6*3600 / dt) # frequency of writing to the console
 Nscalars  = 1    #number of scalars carried by each particle
 
 # physical inputs to loop through for sensitivity tests
-mlds = [20] #[20,50]
-kappas = [0.0001] #[0.0001,0.001,0.01]  
+mlds = [20,50] #[20,50]
+kappas = [0.0001,0.001,0.01] #[0.0001,0.001,0.01]  
 
 for mld in mlds:
     for kappa in kappas: 

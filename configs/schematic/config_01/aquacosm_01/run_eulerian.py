@@ -7,23 +7,24 @@ from aquacosm1D_utilities import Aquacosm1D_Particles
 from pylab import *
 from netCDF4 import Dataset
 from scipy.interpolate import interp1d
+import params
 from scipy.interpolate import splev
 import xarray as xr
 
 ion()
-
+react_params = params.reactions()
 # seed(1234567) moving below to keep constant for all runs
 
 #------------------------------------------------------------
-dt        = 10. # time step in seconds
-Ndays     = 21 #length of the simulation
+dt        = 5 # time step in seconds
+Ndays     = 22 #length of the simulation
 Nloops    = int(24*3600  *  Ndays  / dt)
 Nstore    = int(0.5*3600 / dt) #store the particles every Nshow time steps
 Nconsole  = int(6*3600 / dt) # frequency of writing to the console
 Nscalars  = 1    #number of scalars carried by each particle
 
 # physical inputs to loop through for sensitivity tests
-mlds = [20, 50] #[20,50]
+mlds = [20] #[20,50]
 kappas = [0.01,0.001, 0.0001] #[0.0001,0.001,0.01]  
 
 for mld in mlds:
@@ -55,11 +56,10 @@ for mld in mlds:
         #                         RespirationRate = 0.1)
         # React.Chl_C = 1. # Not applicable. Just adding this here for compatibility with what we write out with BioShading_onlyC
         
-        React = set_up_reaction(wc, dt, Sverdrup_incl_K, 
-                                    LightDecay = 5.,
-                                    BasePhotoRate = 1.,
-                                    RespirationRate = 0.1,
-                                    CarryingCapacity = 20)
+        React = set_up_reaction(wc, dt, Sverdrup, 
+                                    LightDecay = react_params.LightDecay,
+                                    BasePhotoRate = react_params.BasePhotoRate,
+                                    RespirationRate = react_params.RespirationRate)
         React.Chl_C = 1. # Not applicable. Just adding this here for compatibility with what we write out with BioShading_onlyC
             
         # Here's where we initialise the chlorophyll       

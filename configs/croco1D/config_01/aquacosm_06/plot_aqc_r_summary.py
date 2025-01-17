@@ -114,7 +114,7 @@ if __name__ == "__main__":
     
     # (could loop through different params settings if we had lots to plot)
     react_params=params.reactions01 # select which reactions params to use
-    physics_params=params.physics01 # select which physics params to use
+    physics_params=params.physics02 # select which physics params to use
     
     ps= [1e-3,1e-7] #[1e-3,1e-7]
     for p in ps:

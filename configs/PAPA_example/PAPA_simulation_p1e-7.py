@@ -1,5 +1,5 @@
 import sys
-sys.path.insert(0, '../aquacosm1D_lib')
+sys.path.insert(0, '../../../../aquacosm1D_lib')
 from aquacosm1D import *
 
 seed(1234567)

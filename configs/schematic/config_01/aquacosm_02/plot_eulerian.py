@@ -37,7 +37,7 @@ ax = [subplot(1,1,i+1) for i in range(1)]
 max_chl=25
 
 # plot the eulerian data
-eulfile='eulerian_r2.0_c0.01_a1.0_l10.0_mld20_kappa0.0001_dt10.0.nc'
+eulfile='eulerian_r1.0_c0.01_a0.65_l23.0_mld20_kappa0.0001_dt10.0.nc'
 time_eul,z_eul,chl_eul,chl_eul_avg=get_eul_output(eulfile)
 
 Nt_eul,Nz_eul=shape(chl_eul)

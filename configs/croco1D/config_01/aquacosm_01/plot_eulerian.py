@@ -6,7 +6,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from scipy.interpolate import interp1d
 from plot_eul_aqc_lib import *
+import params
 ion()
+
+react_params = params.reactions01()
 
 def plot_C(ax,n,time,z,carbon,label,t,max_chl):
     #ax[n].set_position(  (0.08, 0.86-0.14*n, 0.8, 0.13))
@@ -15,8 +18,8 @@ def plot_C(ax,n,time,z,carbon,label,t,max_chl):
                         cmap=cm.viridis, linewidth=0, s=40)
     img.set_clim(0, max_chl)
     ax[n].set_ylim(50, 0)
-    ax[n].set_xlim(0,21)
-    ax[n].set_xticks(range(0,22))
+    ax[n].set_xlim(0,22)
+    ax[n].set_xticks(range(0,23))
     ax[n].set_ylabel('Depth (m)', fontsize=15,)
     if n==0:
         # ax[n].set_xlabel('Time (days)', fontsize=15,)
@@ -41,19 +44,12 @@ def do_the_plot(mld,kappa,reaction):
     
     # time snapshot to plot
     t=5.75 #days
-    
-    # max values to plot
-    if reaction=='NoReactions':
-        max_chl = 1
-    elif reaction=='Sverdrup_incl_K':
-        max_chl = 20
-    else:
-        max_chl = 10
         
     # plot the eulerian data
-    eulfile='eulerian_'+reaction+'_'+'mean0_amp'+str(amplitude)+'_mld'+str(mld)+'_flx250.nc'
+    eulfile='eulerian_'+react_params.Name+'_l' + str(react_params.LightDecay)+ '_K' + str(react_params.CarryingCapacity)+'_r'+str(react_params.BasePhotoRate)+ '_mean'+str(mean_tau)+"_amp"+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)+'.nc'
     time_eul,z_eul,chl_eul=get_eul_output(eulfile)
     Nt_eul,Nz_eul=shape(chl_eul)
+    max_chl = chl_eul.max()
     # repeat time along the z dimension for plotting
     time_eul = np.repeat(time_eul[:, np.newaxis], Nz_eul, axis=1)
     # repeat depth along the time dimension for plotting
@@ -65,7 +61,9 @@ def do_the_plot(mld,kappa,reaction):
     
 if __name__ == "__main__":
 
-    amplitudes = [0.01] #[0, 0.01, 0.02, 0.03, 0.04]
+    amplitudes = [0.03] #[0, 0.01, 0.02, 0.03, 0.04]
+    mean_tau = 0
+    Qswmax = 800
     mlds = [10] #[10, 25]   
     reactions = ['Sverdrup_incl_K'] #['Sverdrup','Sverdrup_incl_K']
         

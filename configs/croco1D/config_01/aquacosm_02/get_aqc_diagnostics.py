@@ -7,12 +7,15 @@ import xarray as xr
 from pathlib import Path
 from scipy.interpolate import interp1d
 from plot_eul_aqc_lib import *
+import params
 ion()
 
+react_params = params.reactions()
 def do_the_diags(mld,amplitude,mean_tau,Qswmax,React,p):
         
-    fname='aquacosm_p'+"{0:1.0e}".format(p)+'_r'+str(React.MaxPhotoRate*(60.*60.*24.))+'_c'+str(React.Chl_light_abs)+'_a'+str(React.CrowdingMortality*(60.*60.*24.))+'_l'+str(React.LightDecay)+'_mean'+str(mean_tau)+'_amp'+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)
-    aqcfile=fname+'.nc'
+    fname='aquacosm_p'+"{0:1.0e}".format(p)+'_r'+str(react_params.MaxPhotoRate*(60.*60.*24.))+'_b'+str(react_params.BasalMetabolism)+'_c'+str(react_params.Chl_light_abs)+'_a'+str(react_params.CrowdingMortality)+'_l'+str(react_params.LightDecay)+'_mean'+str(mean_tau)+"_amp"+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)
+    aqcfile=fname+'e
+    .nc'
     print('\n working on ' + aqcfile +'\n')
     
     # get the aquacosm data
@@ -26,7 +29,7 @@ def do_the_diags(mld,amplitude,mean_tau,Qswmax,React,p):
     
     # compute the patchiness of the aquacosms
     # (normalised standard deviation in the vicinity of each aquacosm)
-    rad=2.0 # search radius (m) for computation of local stdev around each aquacosm
+    rad=3.0 # search radius (m) for computation of local stdev around each aquacosm
     
     # create the z grid for diagnostics 
     # using a regular 1 m grid over 50 m (i.e. total water depth)
@@ -48,7 +51,7 @@ def do_the_diags(mld,amplitude,mean_tau,Qswmax,React,p):
             stdev_r_norm[ii,dd]=stdev_r[ii,dd]/np.mean(r[ii,dist_relative<rad])
     
     # write a netcdf output file
-    fname_out=fname+'_diags.nc'
+    fname_out=fname+'_.nc'
     ds = xr.Dataset(data_vars=dict(depth_aqc=(["time","rank_aqc"],z_aqc),
                                     r=(["time","rank_aqc"],r),
                                     stdev_r=(["time","depth_diag"],stdev_r),
@@ -85,11 +88,11 @@ def do_the_diags(mld,amplitude,mean_tau,Qswmax,React,p):
     
 if __name__ == "__main__":
     
-    amplitudes = [0.03] #[0, 0.01, 0.02, 0.03, 0.04]
-    mlds = [10] #[10, 25]   
-    mean_taus = [0] #[0, 0.05]
+    amplitudes = [0.03]#[0.01, 0.02, 0.03, 0.04] #do amplitude,mean =0 cases one by one
+    mlds = [10]#[10, 25]   
+    mean_taus = [0]#[0.05]
     Qswmaxs = [250] #[0, 250, 800]  
-    ps=[1e-3,1e-7]
+    ps=[1e-4,1e-7]
     for amplitude in amplitudes:
         for mld in mlds:
             for Qswmax in Qswmaxs:
@@ -101,13 +104,12 @@ if __name__ == "__main__":
                     dt = 5             
                     wc = water_column_netcdf(DatasetName=crocofile, max_depth=50)
                     React = set_up_reaction(wc, dt, BioShading_onlyC,
-                                        LightDecay=5.,
-                                        MaxPhotoRate = 1.0, 
-                                        BasalMetabolism = 0.16,
-                                        Chl_C = 0.017,
-                                        CrowdingMortality = 0.5,
-                                        CrowdingHalfSaturation = 12.5,
-                                        Chl_light_abs = 0.)
+                                            LightDecay=react_params.LightDecay,
+                                            MaxPhotoRate = react_params.MaxPhotoRate, 
+                                            BasalMetabolism = react_params.BasalMetabolism,
+                                            Chl_C = react_params.Chl_C,
+                                            CrowdingMortality = react_params.CrowdingMortality,
+                                            Chl_light_abs = react_params.Chl_light_abs)
                     for p in ps:
                         do_the_diags(mld,amplitude,mean_tau,Qswmax,React,p)
     

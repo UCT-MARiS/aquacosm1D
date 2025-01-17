@@ -49,12 +49,12 @@ for mld in mlds:
             # Reactions
             # BioShading_onlyC
             React = set_up_reaction(wc, dt, BioShading_onlyC,
-                                LightDecay=23.,
-                                MaxPhotoRate = 1., 
+                                LightDecay=5.,
+                                MaxPhotoRate = 2., 
                                 BasalMetabolism = 0.1,
                                 Chl_C = 0.017,
-                                CrowdingMortality = 0.8,
-                                Chl_light_abs = 0.1)
+                                CrowdingMortality = 1.8,
+                                Chl_light_abs = 0.)
                     
             Particles = create_particles(Npts, Nscalars, wc)
             # Here's where we initialise the chlorophyll value for the particles

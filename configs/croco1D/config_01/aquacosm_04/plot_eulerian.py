@@ -5,7 +5,9 @@ from netCDF4 import Dataset
 from datetime import datetime, timedelta
 from pathlib import Path
 from scipy.interpolate import interp1d
+import params
 ion()
+react_params = params.reactions()
 
 def get_eul_output(eulfile):
     data_eul=Dataset(eulfile)
@@ -30,8 +32,8 @@ def plot_C(ax,n,time,z,carbon,label,t,max_chl):
                         cmap=cm.viridis, linewidth=0, s=40)
     img.set_clim(0, max_chl)
     ax[n].set_ylim(50, 0)
-    ax[n].set_xlim(0,21)
-    ax[n].set_xticks(range(0,22))
+    ax[n].set_xlim(0,22)
+    ax[n].set_xticks(range(0,23))
     ax[n].set_ylabel('Depth (m)', fontsize=15,)
     if n==0:
         # ax[n].set_xlabel('Time (days)', fontsize=15,)
@@ -57,9 +59,12 @@ t=5.75 #days
 
 # max values to plot
 max_chl=12
-
+amplitude = 0.01
+mean_tau = 0
+mld = 10
+Qswmax = 800
 # plot the eulerian data
-eulfile='eulerian_r1.0_c0.0_a0.9_l10.0_mean0_amp0.03_mld10_flx250.nc'
+eulfile='eulerian_r'+str(react_params.MaxPhotoRate)+'_b'+str(react_params.BasalMetabolism)+'_c'+str(react_params.Chl_light_abs)+'_a'+str(react_params.CrowdingMortality)+'_l'+str(react_params.LightDecay)+'_mean'+str(mean_tau)+"_amp"+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)+'.nc'
 time_eul,z_eul,chl_eul,chl_eul_avg=get_eul_output(eulfile)
 tindx_eul = (np.abs(time_eul[:,0] - t)).argmin()
 plot_C(ax,0,time_eul,z_eul,chl_eul,'Eulerian',t,max_chl)
@@ -71,8 +76,8 @@ ts.plot(time_eul[:,0],chl_eul_avg, 'k', linewidth=4, label='Eulerian')
 ts.set_ylabel('average Chl (mg m$^{-3}$)', fontsize=15)
 ts.set_xlabel('Time (days)', fontsize=15)
 ts.set_ylim(0, max_chl)
-ts.set_xlim(0,21)
-ts.set_xticks(range(0,22))
+ts.set_xlim(0,22)
+ts.set_xticks(range(0,23))
 ts.grid(linestyle=':', linewidth=0.5)
 #ts.legend(fontsize=12, loc="upper left")
 

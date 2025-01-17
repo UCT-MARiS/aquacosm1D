@@ -64,7 +64,7 @@ def do_the_plot(mld,kappa,reaction,max_photo):
         max_chl = 10
         
     # plot the eulerian data
-    eulfile='eulerian_'+reaction+'_r'+max_photo+'_mld'+str(mld)+"_kappa"+str(kappa)+".nc"
+    eulfile='eulerian_'+reaction+'_r'+max_photo+'_mld'+str(mld)+"_kappa"+str(kappa)+"_dt10.0.nc"
     time_eul,z_eul,chl_eul,chl_eul_avg=get_eul_output(eulfile)
     tindx_eul = (np.abs(time_eul[:,0] - t)).argmin()
     plot_C(ax,0,time_eul,z_eul,chl_eul,'Eulerian',t,max_chl)
@@ -94,7 +94,7 @@ def do_the_plot(mld,kappa,reaction,max_photo):
     
 if __name__ == "__main__":
     
-    mlds = [50] #[10,20,50]
+    mlds = [20] #[10,20,50]
     kappas = [0.001] #[0.0001,0.001,0.01,0.1]     
     reactions = ['Sverdrup_incl_K'] #['Sverdrup','Sverdrup_incl_K']
     max_photo = '1.0'

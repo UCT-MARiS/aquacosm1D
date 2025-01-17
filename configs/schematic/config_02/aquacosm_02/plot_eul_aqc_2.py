@@ -6,7 +6,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from scipy.interpolate import interp1d
 from plot_eul_aqc_lib import *
+import params
 ion()
+
+react_params = params.reactions
 
 def plot_C(ax,n,time,z,carbon,label,t,max_chl):
     #ax[n].set_position(  (0.08, 0.86-0.14*n, 0.8, 0.13))
@@ -64,7 +67,7 @@ def do_the_plot(mld,kappa,React):
     
     # plot the aquacosm data
     if React.dt == 5.:
-        ps=[1e-3,1e-7]
+        ps=[2e-4,2e-8]
     else:
         # ps=[2e-3,2e-7]
         ps=[2e-4,2e-8]
@@ -82,7 +85,7 @@ def do_the_plot(mld,kappa,React):
     ts=gcf().add_axes((0., 0.55-0.55*3, 0.8, 0.5))
     ts.plot(time_eul[:,0],chl_eul_avg, 'k', linewidth=4, label='Eulerian')
     if React.dt == 5.:
-        ps=[1e-3,1e-7]
+        ps=[2e-4,2e-8]
     else:
         # ps=[2e-3,2e-7]
         ps=[2e-4,2e-8]
@@ -125,14 +128,14 @@ if __name__ == "__main__":
             crocofilename="mld"+str(mld)+"_kappa"+str(kappa)+".nc"
             crocofile=crocodir+crocofilename
             
-            dt = 5.        
+            dt = 1.        
             wc = water_column_netcdf(DatasetName=crocofile, max_depth=mld)
             React = set_up_reaction(wc, dt, BioShading_onlyC,
                                     LightDecay=10.,
                                     MaxPhotoRate = 2.0, 
                                     BasalMetabolism = 0.04,
                                     Chl_C = 0.017,
-                                    CrowdingMortality = 1.0,
+                                    CrowdingMortality = 0.1,
                                     Chl_light_abs = 0.01)
             
             do_the_plot(mld,kappa,React)

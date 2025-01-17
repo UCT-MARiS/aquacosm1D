@@ -5,27 +5,30 @@ from netCDF4 import Dataset
 from scipy.interpolate import interp1d
 import xarray as xr
 from pathlib import Path
+import params
+ion()
+
+react_params = params.reactions()
 
 # seed(1234567) moving below to keep constant for all runs
 
 #------------------------------------------------------------
-dt        = 1. # time step in seconds
-Ndays     = 21 #length of the simulation
+dt        = 5 # time step in seconds
+Ndays     = 22 #length of the simulation
 Nloops    = int(24*3600  *  Ndays  / dt)
 Nstore    = int(0.5*3600 / dt) #store the particles every Nshow time steps
 Nconsole  = int(6*3600 / dt) # frequency of writing to the console
-# Npts      = 200  #number of particles (below as scaling with depth)
+Npts      = 200  #number of particles (below as scaling with depth)
 Nscalars  = 1    #number of scalars carried by each particle
 
 # physical inputs to loop through for sensitivity tests
-mlds = [20, 50] #[20,50]
-kappas = [0.01, 0.001, 0.0001] #[0.0001,0.001,0.01]  
+mlds = [20] #[20,50]
+kappas = [0.001] #[0.0001,0.001,0.01]  
 
 # aquacosm settings to loop through for sensitivity tests
-ps = [2.e-4, 2.e-8] # [1.e-3, 1.e-5, 1.e-7, 1.e-9, 1.e-12]
+ps = [1.e-4, 1.e-7] # [1.e-3, 1.e-5, 1.e-7, 1.e-9, 1.e-12]
 
 for mld in mlds:
-    Npts = mld*4  #scale number of particles with depth
     for kappa in kappas:
         for p in ps:
 
@@ -58,18 +61,17 @@ for mld in mlds:
             #                         RespirationRate = 0.1)
             # React.Chl_C = 1. # Not applicable. Just adding this here for compatibility with what we write out with BioShading_onlyC
             
-            React = set_up_reaction(wc, dt, Sverdrup_incl_K, 
-                                    LightDecay = 5.,
-                                    BasePhotoRate = 1.,
-                                    RespirationRate = 0.1,
-                                    CarryingCapacity = 20)
+            React = set_up_reaction(wc, dt, Sverdrup, 
+                                        LightDecay = react_params.LightDecay,
+                                        BasePhotoRate = react_params.BasePhotoRate,
+                                        RespirationRate = react_params.RespirationRate)
             React.Chl_C = 1. # Not applicable. Just adding this here for compatibility with what we write out with BioShading_onlyC
                         
             Particles = create_particles(Npts, Nscalars, wc)
             # Here's where we initialise the chlorophyll value for the particles
             Particles[:, 2] += 1 # mg/m3
             
-            fname_out='aquacosm_p'+"{0:1.0e}".format(Diffuse.p)+'_'+type(React.current_model).__name__+'_r'+str(React.BasePhotoRate*(60.*60.*24.))+"_mld"+str(mld)+"_kappa"+str(kappa)+'_dt'+str(dt)+".nc"
+            fname_out='aquacosm_p'+"{0:1.0e}".format(Diffuse.p)+'_'+react_params.Name+'_r'+str(react_params.BasePhotoRate)+"_mld"+str(mld)+"_kappa"+str(kappa)+'_dt'+str(dt)+".nc"
             print('working on: ', fname_out)
             
             Pstore    = []   #list that stores the particles every Nstore time steps

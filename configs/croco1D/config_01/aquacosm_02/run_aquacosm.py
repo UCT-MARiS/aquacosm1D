@@ -4,28 +4,31 @@ from aquacosm1D import *
 from netCDF4 import Dataset
 from scipy.interpolate import interp1d
 import xarray as xr
+from plot_eul_aqc_lib import *
 from pathlib import Path
+import params
 
 # seed(1234567) moving below to reset seed for each run
 
+react_params = params.reactions()
 #------------------------------------------------------------
 dt        = 5. # time step in seconds
-Ndays     = 21 #length of the simulation
+Ndays     = 22 #length of the simulation
 Nloops    = int(24*3600  *  Ndays  / dt)
 Nstore    = int(0.5*3600 / dt) #store the particles every Nshow time steps
 Nconsole  = int(6*3600 / dt) # frequency of writing to the console
 Npts      = 200  #number of particles
-Nscalars  = 1    #number of scalars carried by each particle
+Nscalars  = react_params.Npop  #number of scalars carried by each particle
 
 # physical inputs to loop through for sensitivity tests
 # (corresponding to CROCO 1D runs)
-amplitudes = [0.03] # [0.02, 0.03, 0.04] #[0, 0.01, 0.02, 0.03, 0.04]
-mean_taus = [0] #[0, 0.05]
-mlds = [10] #[10, 25]
-Qswmaxs = [250] #[0, 250, 800]    
+amplitudes = [0, 0.01, 0.02, 0.03, 0.04]
+mean_taus = [0, 0.05]
+mlds = [10]
+Qswmaxs = [800] #[0, 250, 800]    
 
 # aquacosm settings to loop through for sensitivity tests
-ps = [1.e-3, 1.e-4, 1.e-5, 1.e-6, 1.e-7, 0.]
+ps = [1e-4,1e-7]
 
 for amplitude in amplitudes:
     for mean_tau in mean_taus:
@@ -38,7 +41,6 @@ for amplitude in amplitudes:
                     crocodir='../physics/'
                     crocofilename="mean"+str(mean_tau)+"_mld"+str(mld)+"_amp"+str(amplitude)+"_flx"+str(Qswmax)+"_lat30_T016_hmax50.nc"
                     crocofile=crocodir+crocofilename                
-                               
                     wc = water_column_netcdf(DatasetName=crocofile, max_depth=50)
                     
                     Diffuse = set_up_diffusion(Npts, Nscalars,
@@ -52,25 +54,25 @@ for amplitude in amplitudes:
                     # Reactions
                     # BioShading_onlyC
                     React = set_up_reaction(wc, dt, BioShading_onlyC,
-                                        LightDecay=5.,
-                                        MaxPhotoRate = 1., 
-                                        BasalMetabolism = 0.16,
-                                        Chl_C = 0.017,
-                                        CrowdingMortality = 0.5,
-                                        Chl_light_abs = 0.)
+                                        LightDecay=react_params.LightDecay,
+                                        MaxPhotoRate = react_params.MaxPhotoRate, 
+                                        BasalMetabolism = react_params.BasalMetabolism,
+                                        Chl_C = react_params.Chl_C,
+                                        CrowdingMortality = react_params.CrowdingMortality,
+                                        CrowdingHalfSaturation = react_params.CrowdingHalfSaturation,
+                                        Chl_light_abs =react_params.Chl_light_abs)
                             
                     Particles = create_particles(Npts, Nscalars, wc)
                     # Here's where we initialise the chlorophyll value for the particles
                     data_croco=Dataset(crocofile)
-                    tpas=data_croco.variables['tpas'][0,:,0,0]
-                    temp=data_croco.variables['temp'][0,:,0,0]
+                    temp_croco=data_croco.variables['temp'][:,:,0,0]
                     zt=data_croco.variables['deptht'][:]
+                    time_croco = data_croco.variables['time_counter'][:]/86400
                     data_croco.close()
                     # create a constant chlorophyll ini over surface layer
-                    temp_thermocline=11
-                    z_therm=interp1d(temp,zt,kind='linear')(temp_thermocline)
+                    z_therm_croco=get_z_therm_croco(time_croco,zt,temp_croco)
                     chl_ini=np.zeros(np.shape(zt))+1e-20 # mg/m3
-                    chl_ini[zt<z_therm]=1
+                    chl_ini[zt<z_therm_croco[0]]=1
                     # extend the zt and chl_ini arrays for interpolation to particle locations near boundaries
                     chl_ini=concatenate(([chl_ini[0]], chl_ini, [chl_ini[-1]]))
                     zt=concatenate(([-10], zt,[9999]))
@@ -79,7 +81,7 @@ for amplitude in amplitudes:
                     c_ini=chl_ini/React.Chl_C  
                     Particles[:, 2] = c_ini
                     
-                    fname_out='aquacosm_p'+"{0:1.0e}".format(Diffuse.p)+'_r'+str(React.MaxPhotoRate*(60.*60.*24.))+'_c'+str(React.Chl_light_abs)+'_a'+str(React.CrowdingMortality*(60.*60.*24.))+'_l'+str(React.LightDecay)+'_mean'+str(mean_tau)+"_amp"+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)+'.nc'
+                    fname_out='aquacosm_p'+"{0:1.0e}".format(Diffuse.p)+'_r'+str(react_params.MaxPhotoRate)+'_b'+str(react_params.BasalMetabolism)+'_c'+str(react_params.Chl_light_abs)+'_a'+str(react_params.CrowdingMortality)+'_l'+str(react_params.LightDecay)+'_mean'+str(mean_tau)+"_amp"+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)+'.nc'
                     print('working on: ', fname_out)
                     
                     Pstore    = []   #list that stores the particles every Nstore time steps

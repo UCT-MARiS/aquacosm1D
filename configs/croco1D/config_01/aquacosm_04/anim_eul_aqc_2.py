@@ -158,7 +158,7 @@ if __name__ == "__main__":
     amplitudes = [0.03] #[0, 0.01, 0.02, 0.03, 0.04]
     mlds = [10] #[10, 25]   
     mean_taus = [0] #[0, 0.05]
-    Qswmaxs = [800] #[0, 250, 800]  
+    Qswmaxs = [250] #[0, 250, 800]  
     ps=[1e-7]
     for amplitude in amplitudes:
         for mld in mlds:
@@ -171,11 +171,11 @@ if __name__ == "__main__":
                     dt = 5             
                     wc = water_column_netcdf(DatasetName=crocofile, max_depth=50)
                     React = set_up_reaction(wc, dt, BioShading_onlyC,
-                                        LightDecay=5.,
-                                        MaxPhotoRate = 2.0, 
+                                        LightDecay=10.,
+                                        MaxPhotoRate = 1.0, 
                                         BasalMetabolism = 0.16,
                                         Chl_C = 0.017,
-                                        CrowdingMortality = 0.6,
+                                        CrowdingMortality = 0.9,
                                         CrowdingHalfSaturation = 125,
                                         Chl_light_abs = 0.)
                     for p in ps:

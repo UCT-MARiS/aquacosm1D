@@ -4,10 +4,13 @@ from aquacosm1D import *
 from netCDF4 import Dataset
 from datetime import datetime, timedelta
 from pathlib import Path
+from plot_eul_aqc_lib import *
 from scipy.interpolate import interp1d
 import math
+import params
 ion()
 
+react_params = params.reactions()
 
 def get_r(time,Cs):
     r = np.zeros(len(time))
@@ -28,10 +31,10 @@ def get_r_reactions(time,z,C,reaction):
     crocofile=crocodir+crocofilename                
     dt = 5             
     wc = water_column_netcdf(DatasetName=crocofile, max_depth=mld)
-    React = set_up_reaction(wc, dt, reaction, 
-                               LightDecay = 5.,
-                               BasePhotoRate = 1.,
-                               RespirationRate = 0.1)
+    React = set_up_reaction(wc, dt, Sverdrup, 
+                               LightDecay = react_params.LightDecay,
+                               BasePhotoRate = react_params.BasePhotoRate,
+                               RespirationRate = react_params.RespirationRate)
     Nt,Npts=shape(C)
     
     Nscalars=1
@@ -72,8 +75,8 @@ fig, ax = plt.subplots(figsize=(10,5))
 ax = [subplot(2,1,i+1) for i in range(2)]
 
 # physical inputs to loop through for sensitivity tests
-mlds = [20, 50]
-kappas = [0.0001, 0.001] #[0.0001,0.001,0.01]  
+mlds = [20]
+kappas = [0.001] #[0.0001,0.001,0.01]  
 max_photo = '1.0'
 reaction = Sverdrup_incl_K #'Sverdrup_incl_K'
 
@@ -82,7 +85,7 @@ for n,mld in enumerate(mlds):
     for kappa in kappas: 
         
         #eulfile='eulerian_'+reaction+'_r'+max_photo+'_mld'+str(mld)+"_kappa"+str(kappa)+".nc"
-        eulfile='eulerian_'+reaction.__name__+'_r'+max_photo+'_mld'+str(mld)+"_kappa"+str(kappa)+".nc"
+        eulfile='eulerian_'+react_params.Name+'_r'+str(react_params.BasePhotoRate)+'_mld'+str(mld)+'_kappa'+str(kappa)+'_dt5.nc'
         time_eul,z_eul,chl_eul,chl_eul_avg=get_eul_output(eulfile)
         
         # get r from the model output
@@ -100,7 +103,7 @@ for n,mld in enumerate(mlds):
         
         ax[n].plot(time_eul,eps,label='$\kappa = $'+str(kappa)+' $m^2 s^{-1}$')
 
-    ax[n].set_xlim(0,21)
+    ax[n].set_xlim(0,22)
     
     ax[n].set_ylabel("$\epsilon$", fontsize=15)
     ax[n].set_yscale('log') 

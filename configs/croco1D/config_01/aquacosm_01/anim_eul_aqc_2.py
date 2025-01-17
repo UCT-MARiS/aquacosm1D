@@ -1,3 +1,4 @@
+
 import sys
 sys.path.insert(0, '../../../../aquacosm1D_lib')
 from aquacosm1D import *
@@ -7,11 +8,13 @@ from pathlib import Path
 from scipy.interpolate import interp1d
 from plot_eul_aqc_lib import *
 from matplotlib.animation import FuncAnimation, PillowWriter, FFMpegWriter
+import params
 ion()
+react_params = params.reactions01()
+
+def do_the_anim(mld,amplitude,mean_tau,Qswmax,p):
     
-def do_the_anim(mld,amplitude,mean_tau,Qswmax,React,p):
-    
-    fname='aquacosm_p'+"{0:1.0e}".format(p)+'_'+type(React.current_model).__name__+'_'+'mean'+str(mean_tau)+"_amp"+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)
+    fname='aquacosm_p'+"{0:1.0e}".format(p)+'_'+ react_params.Name+'_l' + str(react_params.LightDecay)+ '_K' + str(react_params.CarryingCapacity)+'_r'+str(react_params.BasePhotoRate)+ '_mean'+str(mean_tau)+"_amp"+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)+'2000p'
     aqcfile=fname+'.nc'
     print('\n working on ' + aqcfile +'\n')
         
@@ -29,9 +32,10 @@ def do_the_anim(mld,amplitude,mean_tau,Qswmax,React,p):
     z_croco = np.repeat(z[np.newaxis,:], Nt_croco, axis=0) 
             
     # get the eulerian data
-    eulfile='eulerian_'+type(React.current_model).__name__+'_'+'mean'+str(mean_tau)+"_amp"+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)+'.nc'
+    eulfile='eulerian_'+react_params.Name+'_l' + str(react_params.LightDecay)+ '_K' + str(react_params.CarryingCapacity)+'_r'+str(react_params.BasePhotoRate)+ '_mean'+str(mean_tau)+"_amp"+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)+'.nc'
     
     time_eul,z_eul,chl_eul=get_eul_output(eulfile)
+    print(time_eul.size)
     # interpolate z_therm onto eulerian time axis (just in case different)
     z_therm_eul = np.squeeze(interp1d(concatenate(([time_eul[0]], time_croco[:,0])),concatenate(([z_therm_croco[0]], z_therm_croco)),kind='linear')([time_eul]))
     chl_eul_avg=get_Cs_eulerian(time_eul,z,zw,chl_eul,z_therm_eul)
@@ -50,7 +54,6 @@ def do_the_anim(mld,amplitude,mean_tau,Qswmax,React,p):
     chl_aqc_avg=get_Cs_aquacosm(time_croco[:,0],z_therm_croco,time_aqc,z_aqc,chl_aqc)
     # repeat time along the z dimension for plotting
     time_aqc = np.repeat(time_aqc[:, np.newaxis], Nz_aqc, axis=1)
-
     # get the diagnostic data 
     diagfile=fname+'_diags.nc'
     _,_,_,_,r,_,_,_,_=get_aqc_diags(diagfile) # only need normalised growth rate r
@@ -59,7 +62,7 @@ def do_the_anim(mld,amplitude,mean_tau,Qswmax,React,p):
     fig=figure(figsize=(10,12))
     #
     # max values to plot
-    max_chl = 12
+    max_chl =  chl_aqc.max()
     #
     # plot the aquacosm data
     ax1 = subplot(1,1,1) 
@@ -68,7 +71,7 @@ def do_the_anim(mld,amplitude,mean_tau,Qswmax,React,p):
     # plot_C(ax1,time_aqc,z_aqc,chl_aqc,max_chl)  
     img = ax1.scatter(time_aqc, z_aqc, c=chl_aqc,
                         cmap=cm.viridis, linewidth=0, s=40)
-    img.set_clim(0, max_chl)
+    img.set_clim(0, 20)
     ax1.set_ylim(50, 0)
     ax1.set_xlim(0,21)
     ax1.set_xticks(range(0,22))
@@ -87,7 +90,7 @@ def do_the_anim(mld,amplitude,mean_tau,Qswmax,React,p):
     ts.plot(time_aqc[:,0],chl_aqc_avg, linewidth=2, label='Aquacosms, p = '+"{0:1.0e}".format(p))
     ts.set_ylabel('average surface Chl (mg m$^{-3}$)', fontsize=15)
     ts.set_xlabel('Time (days)', fontsize=15)
-    ts.set_ylim(0,max_chl)
+    ts.set_ylim(0,11)
     ts.set_xlim(0,21)
     ts.set_xticks(range(0,22))
     ts.grid(linestyle=':', linewidth=0.5)
@@ -108,13 +111,12 @@ def do_the_anim(mld,amplitude,mean_tau,Qswmax,React,p):
     z_aqc_t = z_aqc[tindx_aqc,:]
     chl_aqc_t = chl_aqc[tindx_aqc,:]
     Particles_for_gaussian=array([z_rank,z_aqc_t,chl_aqc_t]).transpose() # reconstructing the particle format for parsing to the gaussian function
-    z_aqc_gaus, chl_aqc_gaus = gaussian_estimate_field(Particles_for_gaussian,2, 50, 1.25) # default stddev = 2.5
+    z_aqc_gaus, chl_aqc_gaus = gaussian_estimate_field(Particles_for_gaussian,2, 50,2.5) # default stddev = 2.5
     aqc_coarse, = bx.plot(chl_aqc_gaus, z_aqc_gaus, '-k', linewidth=3, label="Coarse-grained")
     aqc_scat = bx.scatter(chl_aqc_t, z_aqc_t, c=chl_aqc_t, cmap=cm.viridis, s=15,zorder=3,label="Aquacosms")
-    
     aqc_scat.set_clim(0, max_chl)
     bx.set_ylim(51, -1)
-    max_chl_xlim = 30
+    max_chl_xlim = 20
     bx.set_xlim(0-0.025*max_chl_xlim,max_chl_xlim+0.025*max_chl_xlim)
     bx.set_xlabel('Chlorophyll  (mg m$^{-3}$)', fontsize=15)
     bx.set_ylabel('Depth (m)', fontsize=15)
@@ -149,7 +151,7 @@ def do_the_anim(mld,amplitude,mean_tau,Qswmax,React,p):
         # bx_title.set_text('Time = '+str(i)+' days')
         bx_title.set_text('Time = {0:.2f} days'.format(i))
     
-    anim = FuncAnimation(fig, animate, frames=np.arange(0,21,6/24))
+    anim = FuncAnimation(fig, animate, frames=np.arange(0,22,1/24))
     
     # really struggled to install imagemagick on the WSL Ubunutu system I'm working on so using PillowWriter instead
     # seems the only down side is that it doesn't automatically set the extent of the saved image like "bbox_inches = 'tight'" when saving a jpeg
@@ -160,28 +162,16 @@ def do_the_anim(mld,amplitude,mean_tau,Qswmax,React,p):
     
 if __name__ == "__main__":
     
-    amplitudes = [0.03] #[0, 0.01, 0.02, 0.03, 0.04]
+    amplitudes = [0.02] #[0, 0.01, 0.02, 0.03, 0.04]
     mlds = [10] #[10, 25]
     mean_taus = [0] #[0, 0.05]
-    Qswmaxs = [250] #[0, 250, 800]
+    Qswmaxs = [800] #[0, 250, 800]
     ps=[1e-7]
     for amplitude in amplitudes:
         for mld in mlds:
             for Qswmax in Qswmaxs:
                 for mean_tau in mean_taus:
-                    crocodir='../physics/'
-                    crocofilename="mean"+str(mean_tau)+"_mld"+str(mld)+"_amp"+str(amplitude)+"_flx"+str(Qswmax)+"_lat30_T016_hmax50.nc"
-                    crocofile=crocodir+crocofilename
-                    
-                    dt = 5             
-                    wc = water_column_netcdf(DatasetName=crocofile, max_depth=50)
-                    React = set_up_reaction(wc, dt, Sverdrup_incl_K, 
-                                            LightDecay = 5.,
-                                            BasePhotoRate = 1.,
-                                            RespirationRate = 0.1,
-                                            CarryingCapacity = 20)
-                    
                     for p in ps:
-                        do_the_anim(mld,amplitude,mean_tau,Qswmax,React,p)
+                        do_the_anim(mld,amplitude,mean_tau,Qswmax,p)
     
     

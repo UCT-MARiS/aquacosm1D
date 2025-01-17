@@ -6,7 +6,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from scipy.interpolate import interp1d
 from plot_eul_aqc_lib import *
+import params
 ion()
+
+react_params = params.reactions01()
 
 def plot_C(ax,n,time,z,carbon,label,t,max_chl):
     #ax[n].set_position(  (0.08, 0.86-0.14*n, 0.8, 0.13))
@@ -44,7 +47,7 @@ def do_the_plot(mld,amplitude,Qswmax,reaction):
     crocofilename="mean0_mld"+str(mld)+"_amp"+str(amplitude)+"_flx"+str(Qswmax)+"_lat30_T016_hmax50.nc"
     crocofile=crocodir+crocofilename   
     time_croco, z, zw, temp_croco, _, _, _, _, s_flux, _, _, _ = get_croco_output(crocofile)
-    z_therm_croco=get_z_therm_croco(time_croco,z,temp_croco,11)
+    z_therm_croco=get_z_therm_croco(time_croco,z,temp_croco)
     Nt_croco,Nz_croco=shape(temp_croco)
     # repeat time along the z dimension for plotting
     time_croco = np.repeat(time_croco[:, np.newaxis], Nz_croco, axis=1)
@@ -55,7 +58,7 @@ def do_the_plot(mld,amplitude,Qswmax,reaction):
     t=10 #days    
             
     # plot the eulerian data
-    eulfile='eulerian_'+reaction+'_'+'mean0_amp'+str(amplitude)+'_mld'+str(mld)+'_flx'+str(Qswmax)+'.nc'
+    eulfile='eulerian_'+react_params.Name+'_l' + str(react_params.LightDecay)+ '_K' + str(react_params.CarryingCapacity)+'_r'+str(react_params.BasePhotoRate)+ '_mean'+str(mean_tau)+"_amp"+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)+'.nc'
     time_eul,z_eul,chl_eul=get_eul_output(eulfile)
     # interpolate z_therm onto eulerian time axis (just in case different)
     z_therm_eul = np.squeeze(interp1d(concatenate(([time_eul[0]], time_croco[:,0])),concatenate(([z_therm_croco[0]], z_therm_croco)),kind='linear')([time_eul]))
@@ -73,13 +76,13 @@ def do_the_plot(mld,amplitude,Qswmax,reaction):
     if reaction=='Sverdrup':
         max_chl = 15#40
     else:
-        max_chl = 8#12#35#500
+        max_chl = chl_eul.max()
     plot_C(ax,0,time_eul,z_eul,chl_eul,'Eulerian',t,max_chl)
     
     # plot the aquacosm data
-    ps=[1e-3,1e-7]
+    ps=[1e-4,1e-7]
     for ii,p in enumerate(ps): 
-        aqcfile='aquacosm_p'+"{0:1.0e}".format(p)+'_'+reaction+'_'+'mean0_amp'+str(amplitude)+'_mld'+str(mld)+'_flx'+str(Qswmax)+'.nc'
+        aqcfile='aquacosm_p'+"{0:1.0e}".format(p)+'_'+ react_params.Name+'_l' + str(react_params.LightDecay)+ '_K' + str(react_params.CarryingCapacity)+'_r'+str(react_params.BasePhotoRate)+'_mean'+str(mean_tau)+"_amp"+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)+'.nc'   
         time_aqc,z_aqc,z_rank,chl_aqc,_ = get_aqc_output(aqcfile)
         Nt_aqc,Nz_aqc=shape(chl_aqc)
         # repeat time along the z dimension for plotting
@@ -87,7 +90,7 @@ def do_the_plot(mld,amplitude,Qswmax,reaction):
         plot_C(ax,ii+1,time_aqc,z_aqc,chl_aqc,'Aquacosms, p = '+"{0:1.0e}".format(p),t,max_chl)  
     # add the thermocline
     for n in range(0,3):
-        cnt=ax[n].contour(time_croco,z_croco,temp_croco,[11],colors='w',linewidths=2.5,linestyles='dashed')
+        ax[n].plot(time_croco,z_therm_croco,'w',linestyle='dashed')
         
     # tindx_aqc = (np.abs(time_aqc[:,0] - t)).argmin()
     
@@ -118,9 +121,9 @@ def do_the_plot(mld,amplitude,Qswmax,reaction):
     ts=gcf().add_axes((0., 0.55-0.55*3, 0.8, 0.5))
     ts.plot(time_eul[:,0],chl_eul_avg, 'k', linewidth=4, label='Eulerian')
     # ps=[1e-3,1e-5,1e-7,1e-9]
-    ps=[1e-3,1e-4,1e-5,1e-6,1e-7,0]
+    ps=[1.e-4, 1.e-7]
     for ii,p in enumerate(ps):
-        aqcfile='aquacosm_p'+"{0:1.0e}".format(p)+'_'+reaction+'_'+'mean0_amp'+str(amplitude)+'_mld'+str(mld)+'_flx'+str(Qswmax)+'.nc'   
+        aqcfile='aquacosm_p'+"{0:1.0e}".format(p)+'_'+ react_params.Name+'_l' + str(react_params.LightDecay)+ '_K' + str(react_params.CarryingCapacity)+'_r'+str(react_params.BasePhotoRate)+'_mean'+str(mean_tau)+"_amp"+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)+'.nc'   
         time_aqc,z_aqc,z_rank,chl_aqc,_ = get_aqc_output(aqcfile)
         chl_aqc_avg=get_Cs_aquacosm(time_croco[:,0],z_therm_croco,time_aqc,z_aqc,chl_aqc)
         ts.plot(time_aqc,chl_aqc_avg, linewidth=2, label='Aquacosms, p = '+"{0:1.0e}".format(p))
@@ -130,20 +133,21 @@ def do_the_plot(mld,amplitude,Qswmax,reaction):
     # base = 2 #nearest multiple of 'base'
     # max_chl = base * round(np.max(chl_eul_avg)/base)
     # max_chl = 12#15#35#500
-    ts.set_ylim(0,max_chl)
-    ts.set_xlim(0,21)
+    ts.set_ylim(0,chl_eul.max())
+    ts.set_xlim(0,22)
     ts.set_xticks(range(0,22))
     ts.grid(linestyle=':', linewidth=0.5)
     ts.legend(fontsize=12, loc="upper left")
     
-    plt.savefig('plot_eul_aqc_2_'+reaction+'_'+'mean0_amp'+str(amplitude)+'_mld'+str(mld)+'_flx'+str(Qswmax)+'.jpg',dpi=500,bbox_inches = 'tight')
+    plt.savefig('plot_eul_aqc_2_'+reaction+'_'+'mean' + str(mean_tau) + '_amp'+str(amplitude)+'_mld'+str(mld)+'_flx'+str(Qswmax)+'.jpg',dpi=500,bbox_inches = 'tight')
     
 if __name__ == "__main__":
     
-    amplitudes = [0.03] #[0, 0.01, 0.02, 0.03, 0.04]
+    amplitudes = [0.04] #[0, 0.01, 0.02, 0.03, 0.04]
     mlds = [10] #[10, 25]   
-    Qswmaxs = [0] #[0, 250, 800]  
-    reactions = ['Sverdrup'] # ['Sverdrup','Sverdrup_incl_K']
+    Qswmaxs = [800] #[0, 250, 800] 
+    mean_tau = 0
+    reactions = ['Sverdrup_incl_K'] # ['Sverdrup','Sverdrup_incl_K']
         
     for amplitude in amplitudes:
         for mld in mlds:

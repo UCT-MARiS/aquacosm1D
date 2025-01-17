@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io
 import sys
-sys.path.append('/home/osboxes/2101_postdoc/aquacosm1D/configs/croco1D/scm_oce/')
+sys.path.append('/home/keagan/projects/aquacosm1D/configs/croco1D/scm_oce/')
 from scm_oce import scm_oce
 from scipy.io import netcdf
 from scipy.interpolate import interp1d
@@ -194,14 +194,14 @@ if __name__ == "__main__":
     # Define variable lists to loop through
     #======================================
     # each combination of these variables will be modelled
-    mlds = [10] #[5, 10, 15, 20, 25, 30]
-    lats = [-30] #[-36, -34, -32, -30, -28, -26, -24]
-    amplitudes = [0.01] #[0.01, 0.02, 0.03, 0.04]
-    mean_taus = [0, 0.05] #[0, 0.05]
-    T0s = [16] #[12, 14, 16, 18, 20]
-    #hmaxs = [50] #[20, 50, 100, 200]
+    mlds = [10]#[10,25]#[10, 15, 20, 25, 30] #[5]
+    lats = [-30]#[-36, -34, -32, -30, -28, -26, -24]
+    amplitudes = [0]#[0.01, 0.02, 0.03, 0.04]
+    mean_taus = [0.1]#[0, 0.05] #[0, 0.05]
+    T0s = [16]#[12, 14, 16, 18, 20]
+    hmaxs = [50]#[[20, 50, 100, 200]
     hmax = 50
-    Qswmaxs = [0, 250, 800]    
+    Qswmaxs = [800]#[0, 250, 800]    
  
     for mld in mlds:
         for lat in lats:

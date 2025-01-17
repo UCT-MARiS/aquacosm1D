@@ -10,12 +10,15 @@ seterr(over='raise')
 seterr(under='warn')
 
 
-dt     = 0.75  #in seconds
+dt     = 5  #in seconds
 Ndays  = 4*365  #length of the simulation
 Nloops = int(24*60*60  *  Ndays  / dt)
 Nstore = int(6*60*60 / dt) #store the particles every Nshow time steps
 
 #-----------------------------------------------------------
+def find(condition):
+    res, = np.nonzero(np.ravel(condition))
+    return res
 
 Eulerian_data  = Dataset('PAPA_6h_1Y_L75_DN.nc')
 

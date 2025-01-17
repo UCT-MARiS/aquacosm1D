@@ -5,27 +5,31 @@ from netCDF4 import Dataset
 from scipy.interpolate import interp1d
 import xarray as xr
 from pathlib import Path
+from plot_eul_aqc_lib import *
+import params
+
+react_params=params.reactions01
 
 # seed(1234567) moving below to reset seed for each run
 
 #------------------------------------------------------------
 dt        = 5. # time step in seconds
-Ndays     = 21 #length of the simulation
+Ndays     = 22 #length of the simulation
 Nloops    = int(24*3600  *  Ndays  / dt)
 Nstore    = int(0.5*3600 / dt) #store the particles every Nshow time steps
 Nconsole  = int(6*3600 / dt) # frequency of writing to the console
 Npts      = 200  #number of particles
-Nscalars  = 1    #number of scalars carried by each particle
+Nscalars  = react_params.Npop   #number of scalars carried by each particle
 
 # physical inputs to loop through for sensitivity tests
 # (corresponding to CROCO 1D runs)
-amplitudes = [0.03]  #[0, 0.01, 0.02, 0.03, 0.04]
-mean_taus = [0] #[0, 0.05]
-mlds = [10] #[10, 25]
-Qswmaxs = [0] #[0, 250, 800]    
+amplitudes = [0.04]#[0,0.01,0.02,0.03,0.04]#[0,0.01,0.02,0.03]#[0, 0.01, 0.02, 0.03]
+mean_taus = [0.05]#[0,0.05]#[0,0.05]#[0, 0.05]
+mlds = [10]#[10,25]#[10, 25]
+Qswmaxs = [800]#[0, 250, 800]    
 
 # aquacosm settings to loop through for sensitivity tests
-ps = [0, 1.e-4, 1.e-5, 1.e-6] #[1.e-3, 1.e-5, 1.e-6, 1.e-7, 1.e-9]
+ps = [1e-4,1e-7]#[1.e-4, 1.e-7] #[1.e-3, 1.e-5, 1.e-6, 1.e-7, 1.e-9]
 
 for amplitude in amplitudes:
     for mean_tau in mean_taus:
@@ -64,25 +68,24 @@ for amplitude in amplitudes:
                     # 
                     # Sverdrup including carrying capacity
                     React = set_up_reaction(wc, dt, Sverdrup_incl_K, 
-                                                LightDecay = 5.,
-                                                BasePhotoRate = 1.,
-                                                RespirationRate = 0.1,
-                                                CarryingCapacity = 20)
+                                                LightDecay = react_params.LightDecay,
+                                                BasePhotoRate = react_params.BasePhotoRate,
+                                                RespirationRate = react_params.RespirationRate,
+                                                CarryingCapacity = react_params.CarryingCapacity)
                     React.Chl_C = 1. # Not applicable. Just adding this here for compatibility with BioShading_onlyC
                     
                         
                     Particles = create_particles(Npts, Nscalars, wc)
                     # Here's where we initialise the chlorophyll value for the particles
                     data_croco=Dataset(crocofile)
-                    tpas=data_croco.variables['tpas'][0,:,0,0]
-                    temp=data_croco.variables['temp'][0,:,0,0]
+                    temp_croco=data_croco.variables['temp'][:,:,0,0]
                     zt=data_croco.variables['deptht'][:]
+                    time_croco = data_croco.variables['time_counter'][:]/86400
                     data_croco.close()
                     # create a constant chlorophyll ini over surface layer
-                    temp_thermocline=11
-                    z_therm=interp1d(temp,zt,kind='linear')(temp_thermocline)
+                    z_therm_croco=get_z_therm_croco(time_croco,zt,temp_croco)
                     chl_ini=np.zeros(np.shape(zt))+1e-20 # mg/m3
-                    chl_ini[zt<z_therm]=1
+                    chl_ini[zt<z_therm_croco[0]]=1
                     # extend the zt and chl_ini arrays for interpolation to particle locations near boundaries
                     chl_ini=concatenate(([chl_ini[0]], chl_ini, [chl_ini[-1]]))
                     zt=concatenate(([-10], zt,[9999]))
@@ -91,7 +94,7 @@ for amplitude in amplitudes:
                     c_ini=chl_ini/React.Chl_C  
                     Particles[:, 2] = c_ini
                     
-                    fname_out='aquacosm_p'+"{0:1.0e}".format(Diffuse.p)+'_'+type(React.current_model).__name__+'_'+'mean'+str(mean_tau)+"_amp"+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)+'.nc'
+                    fname_out='aquacosm_p'+"{0:1.0e}".format(Diffuse.p)+'_'+react_params.Name+'_l' + str(react_params.LightDecay)+ '_K' + str(react_params.CarryingCapacity)+'_r'+str(react_params.BasePhotoRate)+'_mean'+str(mean_tau)+"_amp"+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)+'.nc'
                     print('working on: ', fname_out)
                     
                     Pstore    = []   #list that stores the particles every Nstore time steps

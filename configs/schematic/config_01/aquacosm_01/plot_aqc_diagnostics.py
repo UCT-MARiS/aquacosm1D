@@ -7,12 +7,13 @@ import xarray as xr
 from pathlib import Path
 from scipy.interpolate import interp1d
 from plot_eul_aqc_lib import *
+from get_output_lib import *
 import params
 ion()
 np.seterr(over='ignore')
 np.seterr(under='ignore')
 
-react_params = params.reactions01()
+react_params = params.reactions()
 def plot_generic(ax,n,time,z,data,label,min_val,max_val,cmap):
     # set the position
     if n<2:
@@ -25,7 +26,7 @@ def plot_generic(ax,n,time,z,data,label,min_val,max_val,cmap):
     img = ax[n].scatter(time, z, c=data,
                         cmap=cmap, linewidth=0, s=40)
     img.set_clim(min_val, max_val)
-    ax[n].set_ylim(50, 0)
+    ax[n].set_ylim(25, 0)
     ax[n].set_xlim(0,22)
     ax[n].set_xticks(range(0,23))
     ax[n].set_ylabel('Depth (m)', fontsize=15,)
@@ -39,24 +40,24 @@ def plot_generic(ax,n,time,z,data,label,min_val,max_val,cmap):
     else:
         ax[n].set_xlabel('Time (days)', fontsize=15)
         
-def do_the_plot(mld,amplitude,mean_tau,Qswmax,p,L,K):
+def do_the_plot(mld,amplitude,mean_tau,Qswmax,p,L):
         
-    fname='aquacosm_p'+"{0:1.0e}".format(p)+'_'+react_params.Name+'_l' + str(L)+ '_K' + str(K)+'_r'+str(react_params.BasePhotoRate)+ '_mean'+str(mean_tau)+"_amp"+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)
+    fname ='aquacosm_p'+"{0:1.0e}".format(p)+'_'+ str(react_params.Name)+'_r'+str(react_params.BasePhotoRate) +'_mld'+str(mld)+'_kappa'+str(kappa)+'_dt'+str(dt)
     diagfile=fname+'_diags.nc'
     #print('\n working on ' + diagfile +'\n')
     
     # get the croco input data
-    crocodir='../physics/'
-    crocofilename="mean"+str(mean_tau)+"_mld"+str(mld)+"_amp"+str(amplitude)+"_flx"+str(Qswmax)+"_lat30_T016_hmax50.nc"
-    crocofile=crocodir+crocofilename
-    time_croco, z, zw, temp_croco, tpas_croco, kappa_croco, u_croco, v_croco, s_flux, tau_x, tau_y, dzetadx = get_croco_output(crocofile)
+    physicsdir='../physics/'
+    physicsfilename="mld"+str(mld)+"_kappa"+str(kappa)+".nc"
+    physicsfile=physicsdir+physicsfilename
+    time_physics, z, zw, kappa_physics, s_flux = get_physics_input(physicsfile)
     #
-    z_therm_croco=get_z_therm_croco(time_croco,z,temp_croco)
-    Nt_croco,Nz_croco=shape(temp_croco)
+    #z_therm_croco=get_z_therm_croco(time_physics,z,temp_croco)
+    Nt_croco,Nz_croco=shape(kappa_physics)
     # repeat time along the z dimension for plotting
-    time_croco = np.repeat(time_croco[:, np.newaxis], Nz_croco, axis=1)
+    time_physics = np.repeat(time_physics[:, np.newaxis], Nz_croco, axis=1)
     # repeat depth along the time dimension for plotting
-    z_croco = np.repeat(z[np.newaxis,:], Nt_croco, axis=0)
+    #z_croco = np.repeat(z[np.newaxis,:], Nt_croco, axis=0)
     
     # get the aquacosm data
     aqcfile=fname+'.nc'
@@ -77,14 +78,12 @@ def do_the_plot(mld,amplitude,mean_tau,Qswmax,p,L,K):
     
      
     # get the eulerian data for time-series plot
-    eulfile='eulerian_'+react_params.Name+'_l' + str(L)+ '_K' + str(K)+'_r'+str(react_params.BasePhotoRate)+ '_mean'+str(mean_tau)+"_amp"+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)+'.nc'
-    time_eul,z_eul,chl_eul=get_eul_output(eulfile)
+    eulfile='eulerian_'+react_params.Name+'_r'+str(react_params.BasePhotoRate)+'_mld'+str(mld)+'_kappa'+str(kappa)+'_dt5.nc'
+    time_eul,z_eul,chl_eul,chl_eul_avg=get_eul_output(eulfile)
     # interpolate z_therm from croco output onto eulerian time axis (just in case different)
-    z_therm_eul = np.squeeze(interp1d(concatenate(([time_eul[0]], time_croco[:,0])),concatenate(([z_therm_croco[0]], z_therm_croco)),kind='linear')([time_eul]))
+    #z_therm_eul = np.squeeze(interp1d(concatenate(([time_eul[0]], time_physics[:,0])),concatenate(([z_therm_croco[0]], z_therm_croco)),kind='linear')([time_eul]))
     # get average chl in surface layer for eulerian run
-    chl_eul_avg=get_Cs_eulerian(time_eul,z,zw,chl_eul,z_therm_eul)
-    # get average chl in surface layer for aquacosm run
-    chl_aqc_avg=get_Cs_aquacosm(time_croco[:,0],z_therm_croco,time_aqc,z_aqc,chl_aqc)
+    chl_aqc_avg=get_Cs_aquacosm(time_physics[:,0],[11],time_aqc,z_aqc,chl_aqc)
     #
     stdvar = np.zeros(1056)
     for i in np.arange(0,1056,1):
@@ -92,15 +91,20 @@ def do_the_plot(mld,amplitude,mean_tau,Qswmax,p,L,K):
     
     
     max_chl = chl_eul.max()
-    plot_generic(ax,0,time_aqc_plt,z_aqc,chl_aqc,'Chl mg m$^{-3}$)',0,20,cm.viridis)
-    plot_generic(ax,1,time_diag_plt,z_diag_plt,stdev_chl/np.mean(chl_aqc),'$\sigma_{Chl}/\overline{Chl}$ (mg m$^{-3}$)',0,12,cm.viridis)
-    plot_generic(ax,2,time_aqc_plt,z_aqc,r,'R (days$^{-1}$)',-1,5,cm.RdBu_r)
-    plot_generic(ax,3,time_diag_plt,z_diag_plt,stdev_r,'$\sigma_{R}$ (days$^{-1}$)',0,2,cm.viridis)
-    plot_generic(ax,4,time_diag_plt,z_diag_plt,stdev_r_norm,'$\sigma_{R}/\overline{R}$ (-)',-1,1,cm.RdBu_r)
+    print(chl_aqc.max())
+    print(stdev_chl.max())
+    print(r.min(),r.max())
+    print(stdev_r.max())
+    print(stdev_r_norm.min(),stdev_r_norm.max())
+    plot_generic(ax,0,time_aqc_plt,z_aqc,chl_aqc,'Chl mg m$^{-3}$)',0,620,cm.viridis)
+    plot_generic(ax,1,time_diag_plt,z_diag_plt,stdev_chl,'$\sigma_{Chl}$ (mg m$^{-3}$)',0,174,cm.viridis)
+    plot_generic(ax,2,time_aqc_plt,z_aqc,r,'R (days$^{-1}$)',-32,100,cm.RdBu_r)
+    plot_generic(ax,3,time_diag_plt,z_diag_plt,stdev_r,'$\sigma_{R}$ (days$^{-1}$)',0,126,cm.viridis)
+    plot_generic(ax,4,time_diag_plt,z_diag_plt,stdev_r_norm,'$\sigma_{R}/\overline{R}$ (-)',-800,600,cm.RdBu_r)
     # add the thermocline
     #print(chl_aqc.max(),stdev_chl.max(),r.min(),r.max(),stdev_r.max())
-    for n in range(5):
-        ax[n].plot(time_croco,z_therm_croco,'w',linestyle='dashed') 
+    #for n in range(5):
+     #   ax[n].plot(time_physics,[11],'w',linestyle='dashed') 
     # add a title
     ax[0].text(10, -2, 'p = '+"{0:1.0e}".format(p),fontsize=15)
     # time-series plot
@@ -110,7 +114,6 @@ def do_the_plot(mld,amplitude,mean_tau,Qswmax,p,L,K):
     ts.plot(time_aqc,chl_aqc_avg, linewidth=2, label='Aquacosms, p = '+"{0:1.0e}".format(p))
     ts.set_ylabel('average surface Chl (mg m$^{-3}$)', fontsize=15)
     ts.set_xlabel('Time (days)', fontsize=15)
-    ts.set_xlabel('l'+str(L)+'K'+str(K))
     #ts.set_ylim(0,max_chl)
     #ts.set_xlim(0,22)
     ts.set_xticks(range(0,23))
@@ -123,23 +126,24 @@ def do_the_plot(mld,amplitude,mean_tau,Qswmax,p,L,K):
 if __name__ == "__main__":
     
     amplitudes = [0.01]#[0.01, 0.02, 0.03, 0.04]
-    mlds = [10] #[10, 25]
+    mlds = [20] #[10, 25]
     mean_taus = [0]#[0, 0.05]
     Qswmaxs = [800] #[0, 250, 800]
     ps= [1e-7] #[1e-3,1e-7]
-    Ls = [2.5,5.]
-    Ks = [10,20]
+    Ls = [5.]
+    kappa = 0.001
+    dt = 5
     for amplitude in amplitudes:
         for mld in mlds:
             for Qswmax in Qswmaxs:
                 for mean_tau in mean_taus:
                     for L in Ls:
-                        for K in Ks:
-                            crocodir='../physics/'
-                            crocofilename="mean"+str(mean_tau)+"_mld"+str(mld)+"_amp"+str(amplitude)+"_flx"+str(Qswmax)+"_lat30_T016_hmax50.nc"
-                            crocofile=crocodir+crocofilename
+                        physicsdir='../physics/'
+                        physicsfilename="mld"+str(mld)+"_kappa"+str(kappa)+".nc"
+                        physicsfile=physicsdir+physicsfilename
+                        time_physics, z, zw, kappa_physics, s_flux = get_physics_input(physicsfile)
                    
-                            for p in ps:
-                                do_the_plot(mld,amplitude,mean_tau,Qswmax,p,L,K)
+                        for p in ps:
+                            do_the_plot(mld,amplitude,mean_tau,Qswmax,p,L)
     
     

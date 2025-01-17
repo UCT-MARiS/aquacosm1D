@@ -2,11 +2,15 @@ import sys
 sys.path.insert(0, '../../../../aquacosm1D_lib')
 from aquacosm1D import *
 from netCDF4 import Dataset
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from scipy.interpolate import interp1d
-from plot_eul_aqc_lib import *
+from get_output_lib import *
+import params
 ion()
+
+react_params = params.reactions
 
 def plot_C(ax,n,time,z,carbon,label,t,max_chl):
     #ax[n].set_position(  (0.08, 0.86-0.14*n, 0.8, 0.13))
@@ -15,8 +19,8 @@ def plot_C(ax,n,time,z,carbon,label,t,max_chl):
                         cmap=cm.viridis, linewidth=0, s=40)
     img.set_clim(0, max_chl)
     ax[n].set_ylim(50, 0)
-    ax[n].set_xlim(0,21)
-    ax[n].set_xticks(range(0,22))
+    ax[n].set_xlim(0,22)
+    ax[n].set_xticks(range(0,23))
     ax[n].set_ylabel('Depth (m)', fontsize=15,)
     if n==2:
         # ax[n].set_xlabel('Time (days)', fontsize=15,)
@@ -33,7 +37,7 @@ def plot_C(ax,n,time,z,carbon,label,t,max_chl):
     # ax[n].plot([t, t], [0, 50], '--k',
     #                     linewidth=1)
 
-def do_the_plot(mld,kappa,React):
+def do_the_plot(mld,kappa):
     
     figure(figsize=(10,5))
     #ax = [subplot(4,1,i+1) for i in range(4)]
@@ -49,7 +53,7 @@ def do_the_plot(mld,kappa,React):
     t=10 #days    
             
     # plot the eulerian data
-    eulfile='eulerian_'+type(React.current_model).__name__+'_r'+str(React.BasePhotoRate*(60.*60.*24.))+'_mld'+str(mld)+'_kappa'+str(kappa)+'_dt10.0.nc'
+    eulfile='eulerian_'+react_params.Name+'_r'+str(react_params.BasePhotoRate)+'_mld'+str(mld)+'_kappa'+str(kappa)+'_dt5.nc'
     time_eul,z_eul,chl_eul,chl_eul_avg=get_eul_output(eulfile)
     # repeat time along the z dimension for plotting
     Nt_eul,Nz_eul=shape(chl_eul)
@@ -59,15 +63,14 @@ def do_the_plot(mld,kappa,React):
     tindx_eul = (np.abs(time_eul[:,0] - t)).argmin()
     #
     # max values to plot
-    max_chl = 15
+    max_chl = chl_eul.max()
     plot_C(ax,0,time_eul,z_eul,chl_eul,'Eulerian',t,max_chl)
     
     # plot the aquacosm data
-    # ps=[1e-3,1e-7]
-    # ps=[2e-3,2e-7]
-    ps=[2e-4,2e-8]
+
+    ps=[1e-4,1e-7]
     for ii,p in enumerate(ps): 
-        aqcfile='aquacosm_p'+"{0:1.0e}".format(p)+'_'+type(React.current_model).__name__+'_r'+str(React.BasePhotoRate*(60.*60.*24.))+'_mld'+str(mld)+'_kappa'+str(kappa)+'_dt'+str(React.dt)+'.nc'
+        aqcfile='aquacosm_p'+"{0:1.0e}".format(p)+'_'+ str(react_params.Name)+'_r'+str(react_params.BasePhotoRate) +'_mld'+str(mld)+'_kappa'+str(kappa)+'_dt'+str(dt)+'.nc'
         time_aqc,z_aqc,z_rank,chl_aqc,_ = get_aqc_output(aqcfile)
         Nt_aqc,Nz_aqc=shape(chl_aqc)
         # repeat time along the z dimension for plotting
@@ -78,22 +81,20 @@ def do_the_plot(mld,kappa,React):
     # ts=gcf().add_axes((0.4, -0.8, 0.45, 0.6))
     ts=gcf().add_axes((0., 0.55-0.55*3, 0.8, 0.5))
     ts.plot(time_eul[:,0],chl_eul_avg, 'k', linewidth=4, label='Eulerian')
-    # ps=[1e-3,1e-7]
-    # ps=[2e-3,2e-7]
-    ps=[2e-4,2e-8]
     for ii,p in enumerate(ps):
-        aqcfile='aquacosm_p'+"{0:1.0e}".format(p)+'_'+type(React.current_model).__name__+'_r'+str(React.BasePhotoRate*(60.*60.*24.))+'_mld'+str(mld)+'_kappa'+str(kappa)+'_dt'+str(React.dt)+'.nc'
+        aqcfile='aquacosm_p'+"{0:1.0e}".format(p)+'_'+str(react_params.Name)+'_r'+str(react_params.BasePhotoRate) +'_mld'+str(mld)+'_kappa'+str(kappa)+'_dt'+str(dt)+'.nc'
         time_aqc,z_aqc,z_rank,chl_aqc,chl_aqc_avg = get_aqc_output(aqcfile)
         ts.plot(time_aqc,chl_aqc_avg, linewidth=2, label='Aquacosms, p = '+"{0:1.0e}".format(p))
+        print(max(chl_aqc_avg.max(),chl_eul_avg.max()))
     ts.set_ylabel('average Chl (mg m$^{-3}$)', fontsize=15)
     ts.set_xlabel('Time (days)', fontsize=15)
     # max values to plot
     # base = 2 #nearest multiple of 'base'
     # max_chl = base * round(np.max(chl_eul_avg)/base)
     # max_chl = 12#15#35#500
-    ts.set_ylim(0,max_chl)
-    ts.set_xlim(0,21)
-    ts.set_xticks(range(0,22))
+    ts.set_ylim(0,44)
+    ts.set_xlim(0,22)
+    ts.set_xticks(range(0,23))
     ts.grid(linestyle=':', linewidth=0.5)
     ts.legend(fontsize=12, loc="upper left")
     
@@ -107,28 +108,15 @@ def do_the_plot(mld,kappa,React):
     # sx.set_xticks(range(0,22))
     # sx.set_ylim(0,800)
     
-    plt.savefig('plot_eul_aqc_2_'+type(React.current_model).__name__+'_r'+str(React.BasePhotoRate*(60.*60.*24.))+'_mld'+str(mld)+'_kappa'+str(kappa)+'_dt'+str(React.dt)+'.jpg',dpi=500,bbox_inches = 'tight')
+    plt.savefig('plot_eul_aqc_2_' + str(react_params.Name)+'_r'+str(react_params.BasePhotoRate)+'_mld'+str(mld)+'_kappa'+str(kappa)+'_dt'+str(dt)+'.jpg',dpi=500,bbox_inches = 'tight')
     
 if __name__ == "__main__":
 
-    mlds = [20,50]   
-    kappas = [0.0001,0.001]  #[0.0001,0.001,0.01]  
-    
+    mlds = [20]   
+    kappas = [0.001]  
+    dt = 5
     for kappa in kappas:
         for mld in mlds:
-            crocodir='../physics/'
-            crocofilename="mld"+str(mld)+"_kappa"+str(kappa)+".nc"
-            crocofile=crocodir+crocofilename
-            
-            dt = 1.        
-            wc = water_column_netcdf(DatasetName=crocofile, max_depth=mld)
-            
-            React = set_up_reaction(wc, dt, Sverdrup_incl_K, 
-                                    LightDecay = 5.,
-                                    BasePhotoRate = 1.,
-                                    RespirationRate = 0.1,
-                                    CarryingCapacity = 20)
-            
-            do_the_plot(mld,kappa,React)
+            do_the_plot(mld,kappa)
 
     

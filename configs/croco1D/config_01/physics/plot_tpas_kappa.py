@@ -32,8 +32,8 @@ def plot_C(ax,n,time,z,carbon,label):
     ax[n].text(0.2, 45, label,
                fontsize=12, bbox=dict(facecolor='white', alpha=0.5))
 
-Qswmaxs=[250,800]
-tau_means=[0,0.05]
+Qswmaxs=[800]
+tau_means=[0.05]
 
 for tau_mean in tau_means:
     for Qswmax in Qswmaxs:
@@ -46,11 +46,11 @@ for tau_mean in tau_means:
             ax[n].set_position(  (0., 0.55-0.55*n, 0.8, 0.5))
             # ax[n].set_position(  (0.08, 0.86-0.14*n, 0.8, 0.13))
         
-        amplitudes = [0.01, 0.03]
+        amplitudes = [0.03]
         for ii,amplitude in enumerate(amplitudes):
             crocofile = 'mean'+str(tau_mean)+'_mld10_amp'+str(amplitude)+'_flx'+str(Qswmax)+'_lat30_T016_hmax50.nc'
             time_croco, z, zw, temp_croco, tpas_croco, kappa_croco, u_croco, v_croco, s_flux, tau_x, tau_y, dzetadx = get_croco_output(crocofile)
-            z_therm_croco=get_z_therm_croco(time_croco,z,temp_croco,11)
+            z_therm_croco=get_z_therm_croco(time_croco,z,temp_croco)
             # get kappa onto the rho axis so each value will have a cell depth
             kappa_croco_r=w2rho(time_croco,zw,z,kappa_croco)
             kappa_croco_surf=get_Cs_eulerian(time_croco,z,zw,kappa_croco_r,z_therm_croco)
@@ -69,8 +69,8 @@ for tau_mean in tau_means:
             ax[3].plot(time_croco[:,0],kappa_croco_surf,label=str(amplitude))
         
         for n in range(4):
-            ax[n].set_xlim(1,14)
-            ax[n].set_xticks(range(0,15))
+            ax[n].set_xlim(1,22)
+            ax[n].set_xticks(range(0,22))
             if n==3:
                 ax[n].set_xlabel("Time (days)", fontsize=15)
             else:

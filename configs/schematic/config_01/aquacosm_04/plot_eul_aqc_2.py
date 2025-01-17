@@ -111,8 +111,8 @@ def do_the_plot(mld,kappa,React):
     
 if __name__ == "__main__":
 
-    mlds = [20]   
-    kappas = [0.0001]  #[0.0001,0.001,0.01]  
+    mlds = [20,50]   
+    kappas = [0.0001,0.001,0.01]  #[0.0001,0.001,0.01]  
     
     for kappa in kappas:
         for mld in mlds:

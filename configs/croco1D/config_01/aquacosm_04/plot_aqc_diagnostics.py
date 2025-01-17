@@ -7,7 +7,9 @@ import xarray as xr
 from pathlib import Path
 from scipy.interpolate import interp1d
 from plot_eul_aqc_lib import *
+import params
 ion()
+react_params = params.reactions()
 
 def plot_generic(ax,n,time,z,data,label,max_val):
     #ax[n].set_position(  (0.08, 0.86-0.14*n, 0.8, 0.13))
@@ -26,9 +28,9 @@ def plot_generic(ax,n,time,z,data,label,max_val):
     
     ax[n].set_xticklabels([])
 
-def do_the_plot(mld,amplitude,mean_tau,Qswmax,React,p):
+def do_the_plot(mld,amplitude,mean_tau,Qswmax,p):
         
-    fname='aquacosm_p'+"{0:1.0e}".format(p)+'_r'+str(React.MaxPhotoRate*(60.*60.*24.))+'_c'+str(React.Chl_light_abs)+'_a'+str(React.CrowdingMortality*(60.*60.*24.))+'_l'+str(React.LightDecay)+'_mean'+str(mean_tau)+'_amp'+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)
+    fname='aquacosm_p'+"{0:1.0e}".format(p)+'_r'+str(react_params.MaxPhotoRate)+'_b'+str(react_params.BasalMetabolism)+'_c'+str(react_params.Chl_light_abs)+'_a'+str(react_params.CrowdingMortality)+'_l'+str(react_params.LightDecay)+'_mean'+str(mean_tau)+"_amp"+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)
     diagfile=fname+'_diags.nc'
     print('\n working on ' + diagfile +'\n')
     
@@ -38,7 +40,7 @@ def do_the_plot(mld,amplitude,mean_tau,Qswmax,React,p):
     crocofile=crocodir+crocofilename
     time_croco, z, zw, temp_croco, tpas_croco, kappa_croco, u_croco, v_croco, s_flux, tau_x, tau_y, dzetadx = get_croco_output(crocofile)
     #
-    z_therm_croco=get_z_therm_croco(time_croco,z,temp_croco,11)
+    z_therm_croco=get_z_therm_croco(time_croco,z,temp_croco)
     Nt_croco,Nz_croco=shape(temp_croco)
     # repeat time along the z dimension for plotting
     time_croco = np.repeat(time_croco[:, np.newaxis], Nz_croco, axis=1)
@@ -77,7 +79,7 @@ def do_the_plot(mld,amplitude,mean_tau,Qswmax,React,p):
     ax[0].text(10, -2, 'p = '+"{0:1.0e}".format(p),fontsize=15)
     
     # get the eulerian data for time-series plot
-    eulfile='eulerian_r'+str(React.MaxPhotoRate*(60.*60.*24.))+'_c'+str(React.Chl_light_abs)+'_a'+str(React.CrowdingMortality*(60.*60.*24.))+'_l'+str(React.LightDecay)+'_mean'+str(mean_tau)+'_amp'+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)+'.nc'
+    eulfile='eulerian_r'+str(react_params.MaxPhotoRate)+'_b'+str(react_params.BasalMetabolism)+'_c'+str(react_params.Chl_light_abs)+'_a'+str(react_params.CrowdingMortality)+'_l'+str(react_params.LightDecay)+'_mean'+str(mean_tau)+"_amp"+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)+'.nc'
     time_eul,z_eul,chl_eul=get_eul_output(eulfile)
     # interpolate z_therm from croco output onto eulerian time axis (just in case different)
     z_therm_eul = np.squeeze(interp1d(concatenate(([time_eul[0]], time_croco[:,0])),concatenate(([z_therm_croco[0]], z_therm_croco)),kind='linear')([time_eul]))
@@ -114,18 +116,8 @@ if __name__ == "__main__":
                     crocodir='../physics/'
                     crocofilename="mean"+str(mean_tau)+"_mld"+str(mld)+"_amp"+str(amplitude)+"_flx"+str(Qswmax)+"_lat30_T016_hmax50.nc"
                     crocofile=crocodir+crocofilename
-                    
-                    dt = 5             
-                    wc = water_column_netcdf(DatasetName=crocofile, max_depth=50)
-                    React = set_up_reaction(wc, dt, BioShading_onlyC,
-                                        LightDecay=10.,
-                                        MaxPhotoRate = 1.0, 
-                                        BasalMetabolism = 0.16,
-                                        Chl_C = 0.017,
-                                        CrowdingMortality = 0.65,
-                                        CrowdingHalfSaturation = 125,
-                                        Chl_light_abs = 0.)
+                
                     for p in ps:
-                        do_the_plot(mld,amplitude,mean_tau,Qswmax,React,p)
+                        do_the_plot(mld,amplitude,mean_tau,Qswmax,p)
     
     

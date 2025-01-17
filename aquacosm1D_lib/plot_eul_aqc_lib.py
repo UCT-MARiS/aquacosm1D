@@ -1,19 +1,31 @@
-import sys
-sys.path.insert(0, '../../../../aquacosm1D_lib')
-from aquacosm1D import *
 import numpy as np
 from netCDF4 import Dataset
+from aquacosm1D import *
 # from datetime import datetime, timedelta
 # from pathlib import Path
-from scipy.interpolate import interp1d
+from scipy.interpolate import *
 # ion()
-
-def get_z_therm_croco(time,z,temp,temp_thermocline):
-    z_therm=np.zeros(len(time))
+def get_z_therm_croco(time,z,temp):
+    z_therm = np.zeros(len(time))
+    tdif = np.zeros(len(time))
+    zi = np.linspace(0,50,len(time))
     for t in range(0,len(time)):
-        z_therm[t]=interp1d(temp[t,:],z,kind='linear')(temp_thermocline)
-    z_therm[z_therm == 0] = np.NaN
+        tdif = np.zeros(len(time))
+        zi = np.linspace(0,50,len(time))
+        T = np.interp(zi,z,temp[t,:])
+        tdif[0] = T[1]-T[0]
+        tdif[len(time)-1] = T[len(time)-1]-T[len(time)-2]
+        for n in np.arange(len(time)):
+            tdif[n] = T[n]-T[n-1]
+        tdif = tdif[zi[0:]>5]
+        zi = zi[zi>5]
+        idx = np.argwhere(abs(tdif) == max(abs(tdif)))[0]
+        zi = zi[idx[0]:]
+        tdif = tdif[idx[0]:]
+        temp_indx = next((idx for idx, val in enumerate(tdif) if ((np.abs(val) < 0.01) & (val != 0))),-1)
+        z_therm[t] = zi[temp_indx]
     return z_therm
+ 
 
 def get_Cs_aquacosm(time_eul,z_therm_eul,time_aqc,z_aqc,tpas_aqc):
     # get the mean concentration of aquacosm tracer tracer tpas_aqc above a depth of z_therm_eul
@@ -25,8 +37,11 @@ def get_Cs_aquacosm(time_eul,z_therm_eul,time_aqc,z_aqc,tpas_aqc):
         # (aquacosm time will be contained within the range of the croco time as it had to run with this as input)
         t_eul = (np.abs(time_aqc[t] - time_eul)).argmin()
         #
-        
-        Cs[t]=tpas_aqc[t,z_aqc[t,:]<z_therm_eul[t_eul]].mean()
+        try:
+            Cs[t]=tpas_aqc[t,z_aqc[t,:]<z_therm_eul[t_eul]].mean()
+        except:
+            # terrible coding this, but just a quick fix to get around when z_therm[t]=NaN
+            continue
     
     Cs[Cs == 0] = np.NaN     
     return Cs
@@ -60,32 +75,27 @@ def get_Cs_aquacosm_2(time_eul,z_therm_eul,time_aqc,z_aqc,tpas_aqc):
 
 def get_Cs_eulerian(time,z,zw,tpas,z_therm):
     # get the mean concentration of tracer tpas above a depth of z_therm
-    
     Cs=np.zeros(len(time))
     
-    z_thickness=zw[1:]-zw[0:-1];
-    
+    #z_thickness=z[1:]-z[0:-1];
+
     for t in range(0,len(time)):
-        # find the z indices above and below the interpolated depth
-        indx_above=np.where(z<z_therm[t])[-1][-1]
-        indx_below=indx_above+1
-        # compute the weights to apply to the indices either side of the depth of the thermocline
-        weight_above=(z[indx_above]-z_therm[t])/(z[indx_above]-z[indx_below]);
-        weight_below=1-weight_above;
-        #
-        # integrate tpas from the surface to z_therm
-        for k in range(0,indx_above): # using range means we don't include indx_above in the loop, which is what we want
-            Cs[t]=Cs[t] + tpas[t,k]*z_thickness[k]
-        # add half of the layer above
-        Cs[t]=Cs[t]+0.5*tpas[t,indx_above]*z_thickness[indx_above]
-        # add the mean of the layer above and below, weighted by where the
-        # thermocline is relative to the two layers
-        Cs[t]=Cs[t]+weight_above*np.mean(tpas[t,indx_above:indx_below])*np.mean(z_thickness[indx_above:indx_below])
-        # and now divide by the layer thickness to get the mean
+        N = np.where(z<z_therm[t])[-1][-1]
+        h = [z[i + 1] - z[i] for i in range(0, N)]
+        for i in range(1, N, 2):
+            h0, h1 = h[i - 1], h[i]
+            hph, hdh, hmh = h1 + h0, h1 / h0, h1 * h0
+            Cs[t] += (hph / 6) * ((2 - hdh) * tpas[t,i - 1] + (hph**2 / hmh) * tpas[t,i] + (2 - 1 / hdh) * tpas[t,i + 1])
+
+        if N % 2 == 1:
+            h0, h1 = h[N - 2], h[N - 1]
+            Cs[t] += tpas[t,N]     * (2 * h1 ** 2 + 3 * h0 * h1) / (6 * (h0 + h1))
+            Cs[t] += tpas[t,N - 1] * (h1 ** 2 + 3 * h1 * h0)     / (6 * h0)
+            Cs[t] -= tpas[t,N - 2] * h1 ** 3                     / (6 * h0 * (h0 + h1))
+        f = InterpolatedUnivariateSpline(z,tpas[t,:],k=1)
+        Cs[t] += f.integral(z[N],z_therm[t])
         Cs[t]=Cs[t]/z_therm[t]
-    
     Cs[Cs == 0] = np.NaN 
-       
     return Cs
 
 def get_croco_output(crocofile):
@@ -138,6 +148,7 @@ def w2rho(time_croco,zw,z,kappa_w):
         kappa_r[t,:]=interp1d(zw,kappa_w[t,:],kind='linear')([z])
     return kappa_r
 
+
 def get_aqc_diags(diagfile):
     # get the aquacosm diagnostics output
     data_aqc=Dataset(diagfile)
@@ -155,14 +166,13 @@ def get_aqc_diags(diagfile):
 
 def get_aqc_reactions(time,z_aqc,z_rank,chl_aqc,React):
     # get the reaction rates normalised by the concentration of the active tracer
-    # and averaged over the euphotic layer   
         
     # take the chl/C conversion into account, as input C represents chlorophyl
     # but BioShading_onlyC needs Carbon input
-    C=chl_aqc/React.Chl_C 
+    #C=chl_aqc/React.Chl_C 
     
     # set up an aquacosm array in the correct format to be given to the reactions library
-    Nt,Npts=shape(C) 
+    Nt,Npts=np.shape(chl_aqc) 
     Nscalars=1
     Particles      = Aquacosm1D_Particles(
             zeros((Npts, Nscalars+2), dtype='float64')
@@ -170,13 +180,26 @@ def get_aqc_reactions(time,z_aqc,z_rank,chl_aqc,React):
     Particles[:,0] = z_rank
     
     # compute the reaction rates at each time-step, normalised by the concentration of the activate tracer
-    RRates_normalised=np.zeros_like(C)
-    z_euphotic=np.zeros_like(time)
+    RRates_normalised=np.zeros_like(chl_aqc)
     for ii in range(len(time)):
         React.wc.set_current_time(time[ii])
         Particles[:,1]=z_aqc[ii,:]
-        Particles[:,2]=C[ii,:]
+        Particles[:,2]=chl_aqc[ii,:]
         RRates=React.current_model(Particles, React.wc, time[ii])
-        RRates_normalised[ii,:]=RRates[:,0]/Particles[:,2]
+        RRates_normalised[ii,:]=RRates[:,0]#/Particles[:,2]
         
     return RRates_normalised
+
+def rolling_average(array,window,start):
+    rsum = sum(array[start:start+window])
+    rave = rsum/window
+    return rave
+
+def update_rol_ave(array,rave,window,index):
+    raven = rave(array[index+window]-array[index-1])/window
+    return rave,raven
+
+def update_rol_std(array,window,index,std,rave,raven):
+    idx_above = index+window
+    rstd = np.sqrt(std**2 + (array[index_above]-array[index-1])*(array[index_above]-raven+array[index-1]-rave)/window)
+    return rstd

@@ -5,9 +5,11 @@ from netCDF4 import Dataset
 from datetime import datetime, timedelta
 import xarray as xr
 from pathlib import Path
+import params
 from scipy.interpolate import interp1d
 from plot_eul_aqc_lib import *
 ion()
+react_params = params.reactions()
 
 def plot_generic(ax,n,time,z,data,label,min_val,max_val,cmap):
     # set the position
@@ -23,8 +25,8 @@ def plot_generic(ax,n,time,z,data,label,min_val,max_val,cmap):
                         cmap=cmap, linewidth=0, s=40)
     img.set_clim(min_val, max_val)
     ax[n].set_ylim(50, 0)
-    ax[n].set_xlim(0,21)
-    ax[n].set_xticks(range(0,22))
+    ax[n].set_xlim(0,22)
+    ax[n].set_xticks(range(0,23))
     ax[n].set_ylabel('Depth (m)', fontsize=15,)
     # add a colorbar
     cbarax = gcf().add_axes((hzt_loc+0.82, vrt_loc, 0.015, 0.5)) # [left, bottom, width, height] 
@@ -36,9 +38,9 @@ def plot_generic(ax,n,time,z,data,label,min_val,max_val,cmap):
     else:
         ax[n].set_xlabel('Time (days)', fontsize=15)
         
-def do_the_plot(mld,amplitude,mean_tau,Qswmax,React,p):
+def do_the_plot(mld,amplitude,mean_tau,Qswmax,p):
         
-    fname='aquacosm_p'+"{0:1.0e}".format(p)+'_r'+str(React.MaxPhotoRate*(60.*60.*24.))+'_c'+str(React.Chl_light_abs)+'_a'+str(React.CrowdingMortality*(60.*60.*24.))+'_l'+str(React.LightDecay)+'_mean'+str(mean_tau)+'_amp'+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)
+    fname='aquacosm_p'+"{0:1.0e}".format(p)+'_r'+str(react_params.MaxPhotoRate)+'_b'+str(react_params.BasalMetabolism)+'_c'+str(react_params.Chl_light_abs)+'_a'+str(react_params.CrowdingMortality)+'_l'+str(react_params.LightDecay)+'_mean'+str(mean_tau)+"_amp"+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)
     diagfile=fname+'_diags.nc'
     print('\n working on ' + diagfile +'\n')
     
@@ -48,7 +50,7 @@ def do_the_plot(mld,amplitude,mean_tau,Qswmax,React,p):
     crocofile=crocodir+crocofilename
     time_croco, z, zw, temp_croco, tpas_croco, kappa_croco, u_croco, v_croco, s_flux, tau_x, tau_y, dzetadx = get_croco_output(crocofile)
     #
-    z_therm_croco=get_z_therm_croco(time_croco,z,temp_croco,11)
+    z_therm_croco=get_z_therm_croco(time_croco,z,temp_croco)
     Nt_croco,Nz_croco=shape(temp_croco)
     # repeat time along the z dimension for plotting
     time_croco = np.repeat(time_croco[:, np.newaxis], Nz_croco, axis=1)
@@ -87,7 +89,7 @@ def do_the_plot(mld,amplitude,mean_tau,Qswmax,React,p):
     ax[0].text(10, -2, 'p = '+"{0:1.0e}".format(p),fontsize=15)
     
     # get the eulerian data for time-series plot
-    eulfile='eulerian_r'+str(React.MaxPhotoRate*(60.*60.*24.))+'_c'+str(React.Chl_light_abs)+'_a'+str(React.CrowdingMortality*(60.*60.*24.))+'_l'+str(React.LightDecay)+'_mean'+str(mean_tau)+'_amp'+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)+'.nc'
+    eulfile='eulerian_r'+str(react_params.MaxPhotoRate)+'_b'+str(react_params.BasalMetabolism)+'_c'+str(react_params.Chl_light_abs)+'_a'+str(react_params.CrowdingMortality)+'_l'+str(react_params.LightDecay)+'_mean'+str(mean_tau)+"_amp"+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)+'.nc'
     time_eul,z_eul,chl_eul=get_eul_output(eulfile)
     # interpolate z_therm from croco output onto eulerian time axis (just in case different)
     z_therm_eul = np.squeeze(interp1d(concatenate(([time_eul[0]], time_croco[:,0])),concatenate(([z_therm_croco[0]], z_therm_croco)),kind='linear')([time_eul]))
@@ -103,8 +105,8 @@ def do_the_plot(mld,amplitude,mean_tau,Qswmax,React,p):
     ts.set_ylabel('average surface Chl (mg m$^{-3}$)', fontsize=15)
     ts.set_xlabel('Time (days)', fontsize=15)
     ts.set_ylim(0,max_chl)
-    ts.set_xlim(0,21)
-    ts.set_xticks(range(0,22))
+    ts.set_xlim(0,22)
+    ts.set_xticks(range(0,23))
     ts.grid(linestyle=':', linewidth=0.5)
     ts.legend(fontsize=12, loc="upper left")
     
@@ -116,7 +118,7 @@ if __name__ == "__main__":
     amplitudes = [0.03] #[0, 0.01, 0.02, 0.03, 0.04]
     mlds = [10] #[10, 25]
     mean_taus = [0] #[0, 0.05]
-    Qswmaxs = [800] #[0, 250, 800]
+    Qswmaxs = [250] #[0, 250, 800]
     ps= [1e-3,1e-7] #[1e-3,1e-7]
     for amplitude in amplitudes:
         for mld in mlds:
@@ -125,19 +127,9 @@ if __name__ == "__main__":
                     crocodir='../physics/'
                     crocofilename="mean"+str(mean_tau)+"_mld"+str(mld)+"_amp"+str(amplitude)+"_flx"+str(Qswmax)+"_lat30_T016_hmax50.nc"
                     crocofile=crocodir+crocofilename
-                    
-                    dt = 5             
-                    wc = water_column_netcdf(DatasetName=crocofile, max_depth=50)
-                    React = set_up_reaction(wc, dt, BioShading_onlyC,
-                                        LightDecay=5.,
-                                        MaxPhotoRate = 2.0, 
-                                        BasalMetabolism = 0.16,
-                                        Chl_C = 0.017,
-                                        CrowdingMortality = 0.6,
-                                        CrowdingHalfSaturation = 125,
-                                        Chl_light_abs = 0.)
+                
                     
                     for p in ps:
-                        do_the_plot(mld,amplitude,mean_tau,Qswmax,React,p)
+                        do_the_plot(mld,amplitude,mean_tau,Qswmax,p)
     
     

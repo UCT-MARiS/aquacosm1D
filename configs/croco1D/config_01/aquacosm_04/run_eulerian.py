@@ -5,18 +5,20 @@ from aquacosm1D_watercolumn import water_column, water_column_netcdf
 from eulerian1D_diffusion import set_up_eulerian_diffusion
 from aquacosm1D_utilities import Aquacosm1D_Particles
 from pylab import *
+from plot_eul_aqc_lib import *
 from netCDF4 import Dataset
 from scipy.interpolate import interp1d
 from scipy.interpolate import splev
 import xarray as xr
+import params
 
 ion()
-
+react_params = params.reactions()
 # seed(1234567) moving below to reset seed for each run
 
 #------------------------------------------------------------
 dt        = 5. # time step in seconds
-Ndays     = 21 #length of the simulation
+Ndays     = 22 #length of the simulation
 Nloops    = int(24*3600  *  Ndays  / dt)
 Nstore    = int(0.5*3600 / dt) #store the particles every Nshow time steps
 Nconsole  = int(6*3600 / dt) # frequency of writing to the console
@@ -47,26 +49,25 @@ for amplitude in amplitudes:
                 # Reactions
                 # BioShading_onlyC
                 React = set_up_reaction(wc, dt, BioShading_onlyC,
-                                        LightDecay=10.,
-                                        MaxPhotoRate = 1.0, 
-                                        BasalMetabolism = 0.16,
-                                        Chl_C = 0.017,
-                                        CrowdingMortality = 0.9,
-                                        CrowdingHalfSaturation = 125,
-                                        Chl_light_abs = 0.)
+                                    LightDecay=react_params.LightDecay,
+                                    MaxPhotoRate = react_params.MaxPhotoRate, 
+                                    BasalMetabolism = react_params.BasalMetabolism,
+                                    Chl_C = react_params.Chl_C,
+                                    CrowdingMortality = react_params.CrowdingMortality,
+                                    CrowdingHalfSaturation = react_params.CrowdingHalfSaturation,
+                                    Chl_light_abs =react_params.Chl_light_abs)
                 #
                 
                 # Here's where we initialise the chlorophyll
                 data_croco=Dataset(crocofile)
-                tpas=data_croco.variables['tpas'][0,:,0,0]
-                temp=data_croco.variables['temp'][0,:,0,0]
+                temp_croco=data_croco.variables['temp'][:,:,0,0]
                 zt=data_croco.variables['deptht'][:]
+                time_croco = data_croco.variables['time_counter'][:]/86400
                 data_croco.close()
                 # create a constant chlorophyll ini over surface layer
-                temp_thermocline=11
-                z_therm=interp1d(temp,zt,kind='linear')(temp_thermocline)
+                z_therm_croco=get_z_therm_croco(time_croco,zt,temp_croco)
                 chl_ini=np.zeros(np.shape(zt))+1e-20 # mg/m3
-                chl_ini[zt<z_therm]=1
+                chl_ini[zt<z_therm_croco[0]]=1
                 # add end points - the end points are not used and will be fixed by b.c.
                 chl_ini = np.concatenate(([chl_ini[0]],chl_ini,[chl_ini[-1]])) 
                 # convert Chl to C using fixed ratio
@@ -82,7 +83,7 @@ for amplitude in amplitudes:
                 Tracers[:,1] = Diffuse.zc
                 Tracers[:,2] = c_ini
                 
-                fname_out='eulerian_r'+str(React.MaxPhotoRate*(60.*60.*24.))+'_c'+str(React.Chl_light_abs)+'_a'+str(React.CrowdingMortality*(60.*60.*24.))+'_l'+str(React.LightDecay)+'_mean'+str(mean_tau)+"_amp"+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)+'.nc'
+                fname_out='eulerian_r'+str(react_params.MaxPhotoRate)+'_b'+str(react_params.BasalMetabolism)+'_c'+str(react_params.Chl_light_abs)+'_a'+str(react_params.CrowdingMortality)+'_l'+str(react_params.LightDecay)+'_mean'+str(mean_tau)+"_amp"+str(amplitude)+"_mld"+str(mld)+"_flx"+str(Qswmax)+'.nc'
                     
                 print('working on: ', fname_out)
                 

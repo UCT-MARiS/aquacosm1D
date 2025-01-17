@@ -1,9 +1,12 @@
 import sys
 from netCDF4 import Dataset
+sys.path.insert(0, '../../../../aquacosm1D_lib')
+from aquacosm1D import *
 from datetime import datetime, timedelta
 from pathlib import Path
 from scipy.interpolate import interp1d
-from plot_croco_lib import *
+from plot_eul_aqc_lib import *
+import math
 ion()
 
 def plot_C(ax,n,time,z,data,label,cmap,min_value,max_value):
@@ -39,7 +42,7 @@ def do_the_plot(mld,amplitude,Qswmax):
     crocofilename="mean0_mld"+str(mld)+"_amp"+str(amplitude)+"_flx"+str(Qswmax)+"_lat30_T016_hmax50.nc"
     crocofile=crocodir+crocofilename   
     time_croco, z, zw, temp_croco, tpas_croco, kappa_croco, u_croco, v_croco, s_flux, tau_x, tau_y, dzetadx = get_croco_output(crocofile)
-    z_therm_croco=get_z_therm_croco(time_croco,z,temp_croco,11)
+    z_therm_croco=get_z_therm_croco(time_croco,z,temp_croco)
     Nt_croco,Nz_croco=shape(temp_croco)
     # repeat time along the z dimension for plotting
     time_croco = np.repeat(time_croco[:, np.newaxis], Nz_croco, axis=1)
@@ -52,8 +55,7 @@ def do_the_plot(mld,amplitude,Qswmax):
     
     # add the thermocline
     for n in range(0,3):
-        cnt=ax[n].contour(time_croco,z_croco,temp_croco,[11],colors='w',linewidths=2.5,linestyles='dashed')
-        
+        cnt=ax[n].plot(time_croco,z_therm_croco,'w',linestyle='dashed')        
     # sx=gcf().add_axes((0.0, 1.1, 0.8, 0.4))
     # sx.plot(time_croco[:,0],s_flux)
     # sx.set_xticklabels([])
