@@ -1,6 +1,7 @@
 from pylab import *
 from aquacosm1D_reactions   import set_up_reaction, NoReactions, \
-    Sverdrup, Sverdrup_incl_K, SimpleBFM, BioShading, BioShading_onlyC
+    Sverdrup, Sverdrup_incl_K, SimpleBFM, SimpleBFM_onlyC,\
+    BioShading, BioShading_onlyC, Chemostat_multi_species
 from aquacosm1D_diffusion   import set_up_diffusion, sort_by_depth
 from aquacosm1D_transport   import set_up_transport
 from aquacosm1D_watercolumn import water_column, water_column_netcdf

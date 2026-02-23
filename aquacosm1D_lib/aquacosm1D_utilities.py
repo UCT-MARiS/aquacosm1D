@@ -48,8 +48,9 @@ wc       : a water column instance.
 
 Returns an (Npts, Nscalars+2) array. The first column is the particle
 ID (should never be changed). The second column is the particle's
-depth. Particles are sorted by their depth. All other columns are
-initialized to zero.
+depth. Particles are sorted by their depth, which is chosen uniformly
+random between 0 and wc.max_depth. All other columns are initialized
+to zero.
 
     """
     Particles      = Aquacosm1D_Particles(
@@ -134,6 +135,7 @@ maintaining each particle's scalars. It assumes that depth is the
 value in the second column.
 
     """
+    if (len(particles)<=1): return
     particles[:] = particles[particles[:,0].argsort(), :]
     particles.pid_sorted = True
     if is_sorted(particles[:,1]):
@@ -149,6 +151,7 @@ particle retains its PID and all the scalars that it is carying.
 Assumes that depth is the value in the second column.
 
     """
+    if (len(particles)<=1): return
     particles[:] = particles[particles[:,1].argsort(), :]
     particles.depth_sorted = True
     if is_sorted(particles[:,0]):

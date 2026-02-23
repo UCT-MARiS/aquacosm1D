@@ -363,3 +363,112 @@ are assumed to be sorted by height.
         RRates[:,0] = dC_gpp - dC_rsp
         
         return RRates
+
+#-------------------------------------------------------------------------
+
+class SimpleBFM_onlyC:
+    """Modified version of 'SimpleBFM' which uses a constant L/C ratio.
+There is only one field: organic carbon (C). Chlorophyll (L) may be
+later inferred by multiplying C by the specified L/C ratio.
+
+Parameters:
+  LightDecay    [m]        : light absorption e-folding scale.
+  AlphaEpsilon [mgC/(mgChl*s)]: alpha^0_chl * epsilon_par (see notes).
+  MaxPhotoRate [1/day]     : maximum photosynthetic rate.
+  BasalMetabolism [1/day]  : same as respiration rate in Sverdrup's model.
+  Chl_C [mgChl/mgC]        : Fixed Chl:C ratio.
+  CrowdingMortality [1/day]: Mortality rate in the crowding term.
+  CrowdingHalfSaturation [mgC]: name says it all.
+  Chl_light_abs [m^2/mgChl]: Light absorption coefficient of chlorophill.
+
+    """
+    def __init__(self, LightDecay = 10.,
+                       AlphaEpsilon = 1.38e-5*(0.4/0.217),
+                       MaxPhotoRate = 2., 
+                       BasalMetabolism = 0.16, 
+                       Chl_C = 0.017,
+                       #CrowdingMortality = 1.,
+                       #CrowdingHalfSaturation = 12.5,
+    ):
+        self.LightDecay      = LightDecay #[m]
+        self.AlphaEpsilon    = AlphaEpsilon #[mgC/(mgChl*s)]
+        self.MaxPhotoRate    = MaxPhotoRate/(60.*60.*24.)   #[1/s]
+        self.BasalMetabolism = BasalMetabolism/(60.*60.*24.) #[1/s]
+        self.Chl_C           = Chl_C #[mgChl/mgC]
+
+    def net_growth(self, wc, z, time):
+        Q = wc.surface_swr(time)  
+        mu = self.AlphaEpsilon*exp(-z/self.LightDecay)*Q
+        fE = -expm1(-self.Chl_C*mu/self.MaxPhotoRate)
+        return fE*self.MaxPhotoRate - self.BasalMetabolism
+        
+    def __call__(self, Particles, wc, time):
+        """Uses Particles[:,2] as carbon (C) and Particles[:,1] as depth (z).
+
+        """
+        np = len(Particles)
+        z = Particles[:,1]
+        C = Particles[:,2]
+        RRates = 0*Particles[:,2:]
+        RRates[:,0] = self.net_growth(wc, z, time)*C
+        return RRates
+
+#-------------------------------------------------------------------------
+
+class Chemostat_multi_species:
+    """Modified version of 'SimpleBFM' which uses a constant L/C ratio.
+There is only one field: organic carbon (C). Chlorophyll (L) may be
+later inferred by multiplying C by the specified L/C ratio.
+
+Parameters:
+  LightDecay    [m]        : light absorption e-folding scale.
+  AlphaEpsilon [mgC/(mgChl*s)]: alpha^0_chl * epsilon_par (see notes).
+  MaxPhotoRate [1/day]     : maximum photosynthetic rate.
+  BasalMetabolism [1/day]  : same as respiration rate in Sverdrup's model.
+
+    """
+    def __init__(self, LightDecay         = 10.,
+                       AlphaEpsilon       = (1.e-5*(0.4/0.217), 0.5e-5*(0.4/0.217)),
+                       MaxPhotoRate       = (2., 5.), 
+                       BasalMetabolism    = (0.16, 0.05),
+                       HalfSaturation     = (0.1, 0.3),
+                       ResourceRelaxLevel = 1.,
+                       RelaxTime          = 1.,
+                       Chl_C              = 0.017,
+    ):
+        self.LightDecay      = LightDecay #[m]
+        self.AlphaEpsilon    = array(AlphaEpsilon) #[mgC/(mgChl*s)]
+        self.MaxPhotoRate    = array(MaxPhotoRate)/(60.*60.*24.)   #[1/s]
+        self.BasalMetabolism = array(BasalMetabolism)/(60.*60.*24.) #[1/s]
+        self.HalfSaturation  = array(HalfSaturation) #[mg/m^3]
+        self.S               = ResourceRelaxLevel #[mg/m^3]
+        self.tau             = RelaxTime*(60.*60.*24.) #[s]
+        self.Chl_C           = Chl_C #[mgChl/mgC]
+
+    def growth(self, wc, Particles, time):
+        #depth z is the first element in the particles array
+        z = Particles[:, 1] 
+        #resource R is the last element in the part. arr.
+        R = outer(Particles[:,-1], ones_like(self.HalfSaturation))
+        #phytopl. biomasses, one for each species
+        C = Particles[:,2:-1] 
+        Q = wc.surface_swr(time)  
+        mu    = outer(exp(-z/self.LightDecay)*Q, self.AlphaEpsilon)
+        fE    = -expm1(-self.Chl_C*mu/self.MaxPhotoRate)
+        monod =  R / (self.HalfSaturation + R)
+        return self.MaxPhotoRate*monod*fE*C
+
+        
+    def __call__(self, Particles, wc, time):
+        """Uses Particles[:,1] as depth (z), Particles[:,2:-1] as
+        carbon (C) of the various species and Particles[:,-1] as resource.
+
+        """
+        np = len(Particles)
+        R = Particles[:,-1]
+        RRates = 0*Particles[:,2:]
+        Growth = self.growth(wc, Particles, time)
+        Respiration = self.BasalMetabolism*Particles[:,2:-1]
+        RRates[:,:-1] = Growth - Respiration
+        RRates[:, -1] = (self.S - R)/self.tau - sum(Growth, axis=1)
+        return RRates
