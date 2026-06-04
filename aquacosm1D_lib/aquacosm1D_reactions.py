@@ -21,6 +21,9 @@ The models implemented so far are:
 - BioShading : Same as SimpleBFM but accounts for the light absorption of the 
                plankton present in the water column.
 
+- Chemostat_multi_species: modified version of 'SimpleBFM' with only organic carbon (C) 
+                but N species. Each species has a different set of parameters
+
 """
 
 
@@ -168,8 +171,8 @@ Parameters:
 #-------------------------------------------------------------------------
 
 class SimpleBFM:
-    """Marcello's Biogeochemical Flux Model with just organic carbon (C)
-and chlorophyll (L). 
+    """Simplified phytoplankton from the Biogeochemical Flux Model with two constituents:
+    organic carbon (C) and chlorophyll (L). 
 
 Parameters:
   LightDecay    [m]        : light absorption e-folding scale.
@@ -182,7 +185,7 @@ Parameters:
 
     """
     def __init__(self, LightDecay = 10.,
-                       AlphaEpsilon = 1.38e-5*(0.4/0.217),
+                       Alpha = 1.38e-5,
                        MaxPhotoRate = 2.,
                        BasalMetabolism = 0.16,
                        Max_Chl_C = 0.025,
@@ -190,7 +193,7 @@ Parameters:
                        CrowdingHalfSaturation = 12.5,
     ):
         self.LightDecay      = LightDecay #[m]
-        self.AlphaEpsilon    = AlphaEpsilon #[mgC/(mgChl*s)]
+        self.AlphaEpsilon    = Alpha*(0.4/0.217) #[mgC/(mgChl*s)]
         self.MaxPhotoRate    = MaxPhotoRate/(60.*60.*24.)   #[1/s]
         self.BasalMetabolism = BasalMetabolism/(60.*60.*24.) #[1/s]
         self.Max_Chl_C       = Max_Chl_C #[mgChl/mgC]
@@ -239,7 +242,7 @@ Parameters:
 
     """
     def __init__(self, LightDecay = 10.,
-                       AlphaEpsilon = 1.38e-5*(0.4/0.217),
+                       Alpha = 1.38e-5,
                        MaxPhotoRate = 2.,
                        BasalMetabolism = 0.16,
                        Max_Chl_C = 0.025,
@@ -248,7 +251,7 @@ Parameters:
                        Chl_light_abs = 0.03,
     ):
         self.LightDecay             = LightDecay #[m]
-        self.AlphaEpsilon           = AlphaEpsilon #[mgC/(mgChl*s)]
+        self.AlphaEpsilon           = Alpha*(0.4/0.217) #[mgC/(mgChl*s)]
         self.MaxPhotoRate           = MaxPhotoRate/(60.*60.*24.)   #[1/s]
         self.BasalMetabolism        = BasalMetabolism/(60.*60.*24.) #[1/s]
         self.Max_Chl_C              = Max_Chl_C #[mgChl/mgC]
@@ -428,7 +431,7 @@ Parameters:
 
     """
     def __init__(self, LightDecay         = 10.,
-                       AlphaEpsilon       = (1.e-5*(0.4/0.217), 0.5e-5*(0.4/0.217)),
+                       Alpha       = (1.e-5, 0.5e-5),
                        MaxPhotoRate       = (2., 5.), 
                        BasalMetabolism    = (0.16, 0.05),
                        HalfSaturation     = (0.1, 0.3),
@@ -437,7 +440,7 @@ Parameters:
                        Chl_C              = 0.017,
     ):
         self.LightDecay      = LightDecay #[m]
-        self.AlphaEpsilon    = array(AlphaEpsilon) #[mgC/(mgChl*s)]
+        self.AlphaEpsilon    = array(Alpha)*(0.4/0.217) #[mgC/(mgChl*s)]
         self.MaxPhotoRate    = array(MaxPhotoRate)/(60.*60.*24.)   #[1/s]
         self.BasalMetabolism = array(BasalMetabolism)/(60.*60.*24.) #[1/s]
         self.HalfSaturation  = array(HalfSaturation) #[mg/m^3]

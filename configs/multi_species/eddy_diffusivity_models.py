@@ -1,44 +1,50 @@
-from pylab import *
+import numpy as np
 
-#------------------------------------------------------------------------
+# --- Constants ---
+KMIN = 1e-4
+STEEP = 1 / 4
+MLDEPTH = 25
 
+# ------------------------------------------------------------------------
 def Gompertz_Eddy_Diffusion_1em1(z, t):
-    Kmax    = 1.e-1
-    Kmin    = 1.e-4
-    steep   = 1/4
-    MLdepth = 25
-    return Kmin + (Kmax-Kmin)*( 1 - exp(-exp((MLdepth-z)*steep)) )
+    KMAX = 1e-1
+    return KMIN + (KMAX - KMIN) * (1 - np.exp(-np.exp((MLDEPTH - z) * STEEP)))
 
-#------------------------------------------------------------------------
 
+# ------------------------------------------------------------------------
 def Gompertz_Eddy_Diffusion_1em2(z, t):
-    Kmax    = 1.e-2
-    Kmin    = 1.e-4
-    steep   = 1/4
-    MLdepth = 25
-    return Kmin + (Kmax-Kmin)*( 1 - exp(-exp((MLdepth-z)*steep)) )
+    KMAX = 1e-2
+    return KMIN + (KMAX - KMIN) * (1 - np.exp(-np.exp((MLDEPTH - z) * STEEP)))
 
-#------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------
 def smooth_sawtooth(t):
-    """This is periodic of period 2*pi, ranging between 0 and 1.
-    """
-    return (1+(sin(t)+0.3*sin(2*t)+0.1*sin(3*t))/1.1283820906416413)/2
+    """Periodic function with period 2*pi, ranging between 0 and 1."""
+    return (
+        1
+        + (np.sin(t) + 0.3 * np.sin(2 * t) + 0.1 * np.sin(3 * t))
+        / 1.1283820906416413
+    ) / 2
 
+
+# ------------------------------------------------------------------------
 def Time_Varying_Gompertz_Eddy_Diffusion(z, t):
-    Period = 7 #days
-    Ksurfmax   = 1.e-1
-    Ksurfmin   = 1.e-2
-    MLdepthmax = 40
-    MLdepthmin = 15
-    Kdeep      = 1.e-4
-    steep      = 1/4
-    Ksurf   = (Ksurfmin +
-               smooth_sawtooth(2*pi*t/(Period*86400)) *
-               (Ksurfmax-Ksurfmin)
-               )
-    MLdepth = (MLdepthmin +
-               smooth_sawtooth(2*pi*t/(Period*86400)) *
-               (MLdepthmax-MLdepthmin)
-               )
-    return Kdeep + (Ksurf-Kdeep)*( -expm1(-exp((MLdepth-z)*steep)) )
+    PERIOD_DAYS = 7
 
+    KSURF_MAX = 1e-1
+    KSURF_MIN = 1e-2
+    MLDEPTH_MAX = 40
+    MLDEPTH_MIN = 15
+    KDEEP = 1e-4
+
+    Ksurf = KSURF_MIN + smooth_sawtooth(2 * np.pi * t / (PERIOD_DAYS * 86400)) * (
+        KSURF_MAX - KSURF_MIN
+    )
+
+    MLdepth = MLDEPTH_MIN + smooth_sawtooth(2 * np.pi * t / (PERIOD_DAYS * 86400)) * (
+        MLDEPTH_MAX - MLDEPTH_MIN
+    )
+
+    return KDEEP + (Ksurf - KDEEP) * (
+        -np.expm1(-np.exp((MLdepth - z) * STEEP))
+    )
